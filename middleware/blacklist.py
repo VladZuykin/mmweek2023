@@ -16,4 +16,3 @@ class BlacklistMiddleware(BaseMiddleware):
         handler = current_handler.get()
         if handler and self.db.in_blacklist(message.from_user.id):
             raise CancelHandler()
-
