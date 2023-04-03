@@ -15,7 +15,7 @@ class DataBase:
                         username TEXT,
                         fullname TEXT,
                         money   INTEGER NOT NULL DEFAULT 0,
-                        tuc INTEGER)""",  # tuc - состоит ли в Профкоме
+                        tuc INTEGER  NOT NULL DEFAULT 0)""",  # tuc - состоит ли в Профкоме
                      commit=True)
         self.execute("""CREATE TABLE IF NOT EXISTS admins(
                                 tg_id INTEGER NOT NULL PRIMARY KEY,
@@ -68,6 +68,9 @@ class DataBase:
 
     def get_user_info(self, tg_id, what: str):
         return self.execute("SELECT " + what + " FROM users WHERE tg_id = ?", tg_id, fetch="ONE")
+
+    def set_user_tuc(self, tg_id, value: int):
+        self.execute("UPDATE users SET tuc = ? WHERE tg_id = ?", value, tg_id, commit=True)
 
     def __del__(self):
         self.con.close()

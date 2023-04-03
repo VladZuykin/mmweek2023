@@ -3,3 +3,6 @@ async def on_startup(_):
 
 async def on_shutdown(_):
     print("Bot is being stopped.")
+
+
+
