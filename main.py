@@ -2,9 +2,8 @@ from aiogram import executor
 
 import functions
 from middleware import antispam, blacklist, admins
-from database import db_funcs
 
-from bot_create import bot, dp, config, db
+from bot_create import bot, dp, db
 from handlers import registration_handlers
 
 

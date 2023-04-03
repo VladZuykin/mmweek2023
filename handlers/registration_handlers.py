@@ -45,6 +45,6 @@ async def get_fullname(message: types.Message, state: FSMContext):
 
 
 def register_registration_handlers():
-    dp.register_message_handler(greetings, commands=['start'], state=None)
-    dp.register_message_handler(get_fullname, lambda msg: not msg.text.startswith("/"),
+    dp.register_message_handler(greetings, lambda s: s != GreetingState.block, commands=['start'], )
+    dp.register_message_handler(get_fullname,
                                 state=GreetingState.fullname)
