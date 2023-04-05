@@ -2,11 +2,14 @@ import asyncio
 import datetime
 from random import choice
 from typing import Union
+from io import BytesIO
 
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import ParseMode, ReplyKeyboardRemove, Message, CallbackQuery
+from aiogram.utils import deep_linking
 from magic_filter import F
+import qrcode
 
 import constants
 from markups import menu_markups
@@ -23,8 +26,23 @@ async def send_menu_on_update(update: Union[Message, CallbackQuery], state: FSMC
     await message.answer(menu_texts.MENU_TEXT,
                          reply_markup=menu_markups.menu_markup)
 
+
+async def generate_qr_code(message: types.Message, state: FSMContext):
+    payload = message.chat.id
+    # payload = deep_linking.encode_payload(f'{message.chat.id}')
+    link = f'https://t.me/{config.admin_bot_username}?start={payload}'
+    image = qrcode.make(link)
+    with BytesIO() as buffer:
+        image.save(buffer)
+        with BytesIO(buffer.getvalue()) as photo:
+            await message.answer_photo(photo)
+
+
 def register_menu_handlers():
     dp.register_message_handler(send_menu_on_update,
                                 F.from_user.func(lambda user: db.user_registered(user.id)),
                                 state="*",
                                 commands=['start'])
+    dp.register_message_handler(generate_qr_code,
+                                text=menu_texts.MENU_GET_QR_BUTTON_TEXT,
+                                state="*",)
