@@ -4,12 +4,13 @@ import startup_functions
 from middleware import antispam, blacklist, admins
 
 from bot_create import bot, dp, db
-from handlers import registration_handlers
+from handlers import registration_handlers, menu_handlers
 
 
 if __name__ == '__main__':
     print("Bot startup.")
     registration_handlers.register_registration_handlers()
+    menu_handlers.register_menu_handlers()
     dp.middleware.setup(admins.AdminMalware(db))
     dp.middleware.setup(blacklist.BlacklistMiddleware(db))
     dp.middleware.setup(antispam.AntispamMiddleware())
