@@ -1,4 +1,7 @@
+import itertools
+import random
 import sqlite3
+import string
 from typing import Union
 
 from fuzzywuzzy import fuzz
@@ -17,7 +20,8 @@ class DataBase:
                         username TEXT,
                         fullname TEXT NOT NULL,
                         money   INTEGER NOT NULL DEFAULT 0,
-                        tuc INTEGER  NOT NULL DEFAULT 0);""",  # tuc - состоит ли в Профкоме
+                        tuc INTEGER  NOT NULL DEFAULT 0,
+                        enter_code TEXT UNIQUE);""",  # tuc - состоит ли в Профкоме
                      commit=True)
 
         self.execute("""CREATE TABLE IF NOT EXISTS blacklist(
@@ -69,7 +73,16 @@ class DataBase:
         self.execute("""CREATE TABLE IF NOT EXISTS tuc_list (
                             id       INTEGER PRIMARY KEY AUTOINCREMENT,
                             fullname UNIQUE NOT NULL
-                        );""")
+                        );""", commit=True)
+
+        self.execute("""CREATE TABLE IF NOT EXISTS texts(
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT UNIQUE,
+                        content TEXT);
+                        """, commit=True)
+        self.execute("""INSERT INTO texts (name, content) VALUES 
+                        ("help",  "На неделе профкома...")
+                        ON CONFLICT DO NOTHING""", commit=True)
 
     def execute(self, clause: str, *args, commit: bool = False, fetch: Union[bool, str] = False) -> Union[list, None]:
         """
@@ -115,6 +128,15 @@ class DataBase:
                      tg_id, username, fullname, tuc, username, fullname, tuc,
                      commit=True)
 
+    def get_text(self, name):
+        res = self.execute("SELECT content FROM texts WHERE name = ?", name, fetch="ONE")
+        if not res or not res[0]:
+            return False
+        return res[0]
+
+    def get_help_text(self):
+        return self.get_text("help")
+
     def get_user_info(self, tg_id, what: str):
         """
         Вытаскивает заданные в what колонки определённого пользователя
@@ -124,7 +146,14 @@ class DataBase:
         """
         return self.execute("SELECT " + what + " FROM users WHERE tg_id = ?", tg_id, fetch="ONE")
 
+    def get_fullname(self, tg_id):
+        res = self.get_user_info(tg_id, "fullname")
+        if not res or not res[0]:
+            return False
+        return res
+
     def set_user_tuc(self, tg_id, value: int):
+        pass
         """
         Устанавливает значение профкомности
         :param tg_id:
@@ -145,6 +174,28 @@ class DataBase:
         if not sort_list or sort_list[0][0] < bottom:
             return None
         return sort_list[0][1]
+
+    def get_enter_code(self, tg_id):
+        res = self.execute("SELECT enter_code FROM users WHERE tg_id = ?", tg_id, fetch="ONE")
+        if not res or not res[0]:
+            return False
+        return res[0]
+
+    def get_enter_codes(self):
+        return list(map(lambda x: x[0], self.execute("SELECT enter_code FROM users", fetch=True)))
+
+    def create_enter_code(self, tg_id, enter_code):
+        self.execute("UPDATE users SET enter_code = ? WHERE tg_id = ?", enter_code, tg_id, commit=True)
+
+    def create_get_enter_code(self, tg_id, digits=5):
+        if not (code := self.get_enter_code(tg_id)):
+            codes = self.get_enter_codes()
+
+            code = "".join(str(random.choice(string.digits)) for _ in range(digits))
+            while code in codes:
+                code = "".join(str(random.choice(string.digits)) for _ in range(digits))
+            self.create_enter_code(tg_id, code)
+        return code
 
     def __del__(self):
         self.con.close()

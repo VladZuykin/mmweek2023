@@ -1,3 +1,3 @@
 # Название валюты
-WALLET_SINGULAR = "диффур"
-WALLET_PLURAL = "диффуры"
+WALLET_SINGULAR = "мнимая единица"
+WALLET_PLURAL = "мнимые единицы"
