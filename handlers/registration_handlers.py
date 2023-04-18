@@ -10,6 +10,7 @@ from magic_filter import F
 
 import constants
 from functions import registration_functions
+from functions.sleep import sleep
 from fsm.registration_fsm import GreetingState
 from markups import registration_markups
 from bot_create import bot, dp, config
@@ -20,17 +21,17 @@ from texts import registration_texts
 async def greetings(message: types.Message, state: FSMContext):
     await GreetingState.block.set()
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await asyncio.sleep(1)
+    await sleep(1)
     await message.answer(registration_texts.GREETING_FIRST_MESSAGE_TEXT,
                          reply_markup=ReplyKeyboardRemove())
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await asyncio.sleep(2)
+    await sleep(2)
     await message.answer(registration_texts.GREETING_SECOND_MESSAGE_TEXT, parse_mode=ParseMode.HTML)
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await asyncio.sleep(5)
+    await sleep(5)
     await message.answer(registration_texts.GREETING_THIRD_MESSAGE_TEXT)
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await asyncio.sleep(5)
+    await sleep(5)
     await message.answer(registration_texts.GREETING_FOURTH_MESSAGE_TEXT)
     await GreetingState.fullname.set()
 
@@ -39,14 +40,14 @@ async def greetings(message: types.Message, state: FSMContext):
 async def get_fullname(message: types.Message, state: FSMContext):
     await GreetingState.block.set()
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await asyncio.sleep(1)
+    await sleep(1)
     await message.answer(registration_texts.NICE_TO_MEET_TEMPLATE.format(
         message.text[:constants.MAX_FULLNAME_LEN]
     ),
         reply_markup=ReplyKeyboardRemove()
     )
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await asyncio.sleep(2)
+    await sleep(2)
     # Добавляем в хранилище полное имя
     await state.update_data(fullname=message.text)
 
@@ -69,7 +70,7 @@ async def get_fullname(message: types.Message, state: FSMContext):
 async def similar_fullname_refused(message: types.Message, state: FSMContext):
     await GreetingState.block.set()
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await asyncio.sleep(1)
+    await sleep(1)
     await message.answer(registration_texts.NOT_IN_TUC_TEXT,
                          reply_markup=registration_markups.NOT_IN_TUC_MARKUP)
     await GreetingState.not_found.set()
@@ -82,15 +83,15 @@ async def tuc_registration(message: types.Message, state: FSMContext):
     fullname = registration_functions.get_capitalised_sentence(data["similar"])
     # Сообщение о регистрации, если нашёл в списках профкома
     db.add_user(message.from_user.id, message.from_user.username, fullname, tuc=1)
-    await asyncio.sleep(1)
+    await sleep(1)
     await message.answer(registration_texts.USUAL_REGISTERED_TEXT1,
                          reply_markup=ReplyKeyboardRemove())
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await asyncio.sleep(4)
+    await sleep(4)
     await message.answer(registration_texts.REGISTERED_TEXT2,
                          )
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await asyncio.sleep(5)
+    await sleep(5)
     await message.answer(registration_texts.IN_TUC_TEXT,
                          # reply_markup=registration_markups.
                          )
@@ -101,7 +102,7 @@ async def tuc_registration(message: types.Message, state: FSMContext):
 async def request_text(message: types.Message, state: FSMContext):
     await GreetingState.block.set()
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await asyncio.sleep(1)
+    await sleep(1)
     await message.answer(registration_texts.WAIT_FOR_TEXT,
                          reply_markup=ReplyKeyboardRemove())
     await GreetingState.fullname.set()
@@ -110,7 +111,7 @@ async def request_text(message: types.Message, state: FSMContext):
 async def repeat_fullname_input(message: types.Message, state: FSMContext):
     await GreetingState.block.set()
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await asyncio.sleep(1)
+    await sleep(1)
     await message.answer(registration_texts.REPEAT_FULLNAME_ASK_TEXT,
                          reply_markup=ReplyKeyboardRemove())
     await GreetingState.fullname.set()
@@ -126,16 +127,16 @@ async def register_without_tuc(message: types.Message, state: FSMContext):
     await GreetingState.block.set()
     await add_db_no_tuc(message, state)
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await asyncio.sleep(1)
+    await sleep(1)
     await message.answer(registration_texts.CAN_JOIN_TUC_TEXT,
                          reply_markup=ReplyKeyboardRemove())
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await asyncio.sleep(2)
+    await sleep(2)
     await message.answer(registration_texts.SAD_REGISTERED_TEXT1,
                          parse_mode=ParseMode.HTML,
                          disable_web_page_preview=True)
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await asyncio.sleep(2.5)
+    await sleep(2.5)
     await message.answer(registration_texts.REGISTERED_TEXT2,
 
                          )
@@ -147,15 +148,15 @@ async def joke_without_tuc(message: types.Message, state: FSMContext):
     await GreetingState.block.set()
     await add_db_no_tuc(message, state)
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await asyncio.sleep(1)
+    await sleep(1)
     await message.answer(registration_texts.JOKE_ANSWER,
                          reply_markup=ReplyKeyboardRemove())
-    await asyncio.sleep(2)
+    await sleep(2)
     await message.answer(registration_texts.SAD_REGISTERED_TEXT1,
                          parse_mode=ParseMode.HTML,
                          disable_web_page_preview=True)
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await asyncio.sleep(4)
+    await sleep(4)
     await message.answer(registration_texts.REGISTERED_TEXT2,
                          # reply_markup=registration_markups.
                          )
@@ -166,14 +167,14 @@ async def joke_without_tuc(message: types.Message, state: FSMContext):
 async def offer_tuc_check_query(message: types.Message, state: FSMContext):
     await GreetingState.block.set()
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await asyncio.sleep(1)
+    await sleep(1)
     await message.answer(registration_texts.NOT_IN_TUC_MANUAL_CHECK_TEXT1,
                          reply_markup=ReplyKeyboardRemove())
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await asyncio.sleep(3)
+    await sleep(3)
     await message.answer(registration_texts.NOT_IN_TUC_MANUAL_CHECK_TEXT2)
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await asyncio.sleep(3.5)
+    await sleep(3.5)
     await message.answer(registration_texts.NOT_IN_TUC_MANUAL_CHECK_TEXT3,
                          reply_markup=registration_markups.TUC_MANUAL_CHECK_MARKUP)
     await GreetingState.tuc_check_query.set()
@@ -196,11 +197,11 @@ async def send_tuc_check_query(message: types.Message, state: FSMContext):
                            reply_markup=registration_markups.get_tuc_check_inline_keyboard(user.id)
                            )
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await asyncio.sleep(1)
+    await sleep(1)
     await message.answer(text=registration_texts.TUC_MANUAL_CHECK_SENT_TEXT,
                          reply_markup=ReplyKeyboardRemove())
     await bot.send_chat_action(message.chat.id, ChatActions.UPLOAD_PHOTO)
-    await asyncio.sleep(3)
+    await sleep(3)
     cat_io = await registration_functions.get_random_cat_from_web()
     if cat_io:
         await bot.send_photo(chat_id=message.chat.id, photo=cat_io)
@@ -208,11 +209,11 @@ async def send_tuc_check_query(message: types.Message, state: FSMContext):
         cat_io = registration_functions.get_cat_from_files()
         await bot.send_photo(chat_id=message.chat.id, photo=cat_io)
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await asyncio.sleep(3)
+    await sleep(3)
     await message.answer(registration_texts.MEANTIME_REGISTERED_TEXT1,
                          )
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await asyncio.sleep(4)
+    await sleep(4)
     await message.answer(registration_texts.REGISTERED_TEXT2,
                          # reply_markup=registration_markups.
                          )
