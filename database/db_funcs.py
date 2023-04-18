@@ -3,8 +3,9 @@ import random
 import sqlite3
 import string
 from typing import Union
-
+import datetime as dt
 from fuzzywuzzy import fuzz
+from middleware import texts
 
 from functions import registration_functions
 
@@ -30,7 +31,15 @@ class DataBase:
 
         self.execute("""CREATE TABLE IF NOT EXISTS events (
                             id   INTEGER PRIMARY KEY AUTOINCREMENT,
-                            name TEXT
+                            name TEXT NOT NULL,
+                            reward INTEGER NOT NULL,
+                            description TEXT,
+                            datetime TEXT NOT NULL, 
+                            img_path TEXT,
+                            img_id TEXT,
+                            button_text TEXT,
+                            button_url TEXT,
+                            release INTEGER DEFAULT 0                        
                         );
                         """,
                      commit=True
@@ -109,6 +118,45 @@ class DataBase:
 
         if fetch:
             return data
+
+    def add_event(self, name, datetime, reward, description=None, img_path=None, img_id=None):
+        self.execute("INSERT INTO events (name, description, reward, datetime, img_path, img_id)"
+                     "VALUES (?, ?, ?, ?, ?, ?)",
+                     name,
+                     description,
+                     reward,
+                     dt.datetime.strftime(datetime,
+                                          texts.DATE_TIME_TEMPLATE),
+                     img_path,
+                     img_id,
+                     commit=True)
+
+    def get_events_summary(self, show_all=False):
+        if show_all:
+            res = self.execute("SELECT id, name, datetime FROM events", fetch=True)
+        else:
+            res = self.execute("SELECT id, name, datetime  FROM events WHERE release = 1", fetch=True)
+        # Меняем строковую дату на datetime
+        return list(map(lambda x: (x[0], x[1], dt.datetime.strptime(x[2], texts.DATE_TIME_TEMPLATE)), res))
+
+    def get_event(self, event_id) -> Union[dict, None]:
+        res = self.execute("SELECT name, datetime, description, img_path, img_id, release, button_text, button_url  "
+                           "FROM events "
+                           "WHERE id = ?",
+                           event_id,
+                           fetch="one")
+        if not res:
+            return None
+        name, datetime, description, img_path, img_id, release, button_text, button_url = res
+        return {
+            "name": name,
+            "datetime": dt.datetime.strptime(datetime, texts.DATE_TIME_TEMPLATE),
+            "description": description,
+            "img_path": img_path,
+            "img_id": img_id,
+            "button_text": button_text,
+            "button_url": button_url
+        }
 
     def in_blacklist(self, tg_id):
         data = self.execute("SELECT tg_id FROM blacklist WHERE tg_id = ?", tg_id, fetch="one")
@@ -203,3 +251,7 @@ class DataBase:
 
 if __name__ == '__main__':
     db = DataBase("mmweek2023db.db")
+    db.add_event("Отчисление", dt.datetime(year=2023, month=4, day=25, hour=18, minute=0), 50,
+                 description="Это крутое и очень крутое мероприятие, которое преподы сделали специально для вас крутых")
+    # print(db.get_events_summary())
+    # print(db.get_event(2))
