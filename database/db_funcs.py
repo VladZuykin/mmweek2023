@@ -198,7 +198,7 @@ class DataBase:
         res = self.get_user_info(tg_id, "fullname")
         if not res or not res[0]:
             return False
-        return res
+        return res[0]
 
     def set_user_tuc(self, tg_id, value: int):
         pass
