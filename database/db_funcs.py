@@ -49,10 +49,9 @@ class DataBase:
                      )
         self.execute("""CREATE TABLE IF NOT EXISTS admins (
                             tg_id    INTEGER NOT NULL
-                                             PRIMARY KEY
-                                             REFERENCES users (tg_id) ON UPDATE NO ACTION,
+                                             PRIMARY KEY,
                             level    INTEGER,
-                            event_id INTEGER REFERENCES events (id) 
+                            event_id INTEGER
                             );""",
                      commit=True)
 

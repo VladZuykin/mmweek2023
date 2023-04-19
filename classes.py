@@ -6,7 +6,8 @@ CONFIG_TEMPLATE = """{
   "tg_admin_bot_username": "",
   "db_path": "database/mmweek2023db.db",
   "admins_chat_id": "",
-  "support_chat_id": ""
+  "support_chat_id": "",
+  "org_bot_token": ""
 }
 """
 
@@ -18,6 +19,7 @@ class Config:
         self.admins_chat_id = None
         self.admin_bot_username: str = ''
         self.support_chat_id = None
+        self.org_bot_token = ""
 
         if os.path.exists(config_path):
             self.load_settings()
@@ -35,6 +37,7 @@ class Config:
             self.db_path = config["db_path"]
             self.admins_chat_id = config["admins_chat_id"]
             self.support_chat_id = config["support_chat_id"]
+            self.org_bot_token = config["org_bot_token"]
 
     def create_file(self):
         with open(self.config_path, 'w', encoding='utf-8') as file:
