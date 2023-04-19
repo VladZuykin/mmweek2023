@@ -12,3 +12,6 @@ WEEKDAYS = {0: "понедельник",
 def get_weekday_str(datetime: dt.datetime):
     num = dt.datetime.weekday(datetime)
     return WEEKDAYS[num]
+
+
+

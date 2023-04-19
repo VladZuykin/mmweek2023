@@ -1,3 +1,4 @@
+import asyncio
 import itertools
 import random
 import sqlite3
@@ -5,6 +6,8 @@ import string
 from typing import Union
 import datetime as dt
 from fuzzywuzzy import fuzz
+
+import constants
 from middleware import texts
 
 from functions import registration_functions
@@ -92,6 +95,23 @@ class DataBase:
         self.execute("""INSERT INTO texts (name, content) VALUES 
                         ("help",  "На неделе профкома...")
                         ON CONFLICT DO NOTHING""", commit=True)
+
+        self.execute("""CREATE TABLE IF NOT EXISTS promo(
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT UNIQUE NOT NULL,
+                        money INTEGER NOT NULL,
+                        can_use INTEGER NOT NULL,
+                        used INTEGER NOT NULL DEFAULT 0,
+                        time_registered TEXT NOT NULL,
+                        time_ends TEXT NOT NULL);""",
+                     commit=True)
+
+        self.execute("""CREATE TABLE IF NOT EXISTS promo_usages(
+                                promo_id TEXT NOT NULL,
+                                tg_id INTEGER NOT NULL,
+                                datetime TEXT NOT NULL,
+                                CONSTRAINT was PRIMARY KEY (promo_id, tg_id));""",
+                     commit=True)
 
     def execute(self, clause: str, *args, commit: bool = False, fetch: Union[bool, str] = False) -> Union[list, None]:
         """
@@ -198,10 +218,9 @@ class DataBase:
         res = self.get_user_info(tg_id, "fullname")
         if not res or not res[0]:
             return False
-        return res
+        return res[0]
 
     def set_user_tuc(self, tg_id, value: int):
-        pass
         """
         Устанавливает значение профкомности
         :param tg_id:
@@ -245,8 +264,57 @@ class DataBase:
             self.create_enter_code(tg_id, code)
         return code
 
-    def __del__(self):
-        self.con.close()
+    def use_promo(self, tg_id, promo):
+        """
+
+        :param tg_id:
+        :param promo:
+        :return: 0 - сработало, 1 - нет кода, 2 - уже использовано, 3 - просрочен, 4 - использован много раз,
+         5 - транзакция не завершена
+        """
+        data = self.execute("SELECT id, money, time_ends, used, can_use FROM promo WHERE name = ?",
+                            promo,
+                            fetch="one")
+        if not data:
+            return 1
+        promo_id, money, time_ends, used, can_use = data
+        if promo_id:
+            dt_ends = dt.datetime.strptime(time_ends, constants.DATETIME_FORMAT).astimezone(constants.TZ)
+            if dt.datetime.now(constants.TZ) <= dt_ends:
+                # await asyncio.sleep(20)
+                if used < can_use:
+                    used_user = self.execute("SELECT promo_id FROM promo_usages WHERE promo_id = ? and tg_id = ?",
+                                             promo_id,
+                                             tg_id, fetch="one")
+                    if not used_user:
+                        cur = self.con.cursor()
+                        try:
+                            cur.execute("BEGIN EXCLUSIVE TRANSACTION;")
+                            cur.execute("UPDATE promo SET used = used + 1 WHERE id = ?;", (promo_id,))
+                            cur.execute("INSERT INTO promo_usages (promo_id, tg_id, datetime) VALUES (?, ?, ?);",
+                                        (promo_id, tg_id,
+                                         dt.datetime.strftime(dt.datetime.now(tz=constants.TZ),
+                                                              constants.DATETIME_FORMAT)))
+                            cur.execute("UPDATE users SET money = money + ? WHERE tg_id = ?;", (money, tg_id))
+                            cur.execute("END TRANSACTION;")
+                            self.con.commit()
+                            cur.close()
+                            return 0
+                        except (sqlite3.DatabaseError, sqlite3.InternalError) as e:
+                            cur.close()
+                            return 5
+                    else:
+                        return 2
+                else:
+                    return 4
+            else:
+                return 3
+        else:
+            return 1
+
+
+def __del__(self):
+    self.con.close()
 
 
 if __name__ == '__main__':
