@@ -160,6 +160,9 @@ async def promo_input(message: types.Message, state: FSMContext):
                                                               one_time_keyboard=True).add(menu_markups.CANCEL_BUTTON)
                              )
 
+async def show_shop_temp_message(message: types.Message, state: FSMContext):
+    await message.answer(menu_texts.STORE_TEMP_TEXT)
+
 
 def register_menu_handlers():
     dp.register_message_handler(send_menu_on_update,
@@ -205,6 +208,9 @@ def register_menu_handlers():
     dp.register_message_handler(promo_input,
                                 state=menu_fsm.PromoState.input_wait
                                 )
+    dp.register_message_handler(show_shop_temp_message,
+                                state=None,
+                                text=menu_texts.MENU_STORE_BUTTON_TEXT)
     # Обязательно оставить в конце, чтобы отвечал на остальные сообщения
     dp.register_message_handler(any_message_menu_respond,
                                 F.from_user.func(lambda user: db.user_registered(user.id)),
