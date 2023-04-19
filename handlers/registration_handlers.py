@@ -61,11 +61,22 @@ async def get_fullname(message: types.Message, state: FSMContext):
                 reply_markup=registration_markups.SIMILAR_ASK_MARKUP)
             await GreetingState.found_similar.set()
         else:
-            await with_tuc_registration(message, state)
+            # TODO Сюда сделать вопрос: да или нет всё-таки
+            await ask_if_in_tuc(message, state)
     else:
         await message.answer(registration_texts.NOT_IN_TUC_TEXT,
                              reply_markup=registration_markups.NOT_IN_TUC_MARKUP)
         await GreetingState.not_found.set()
+
+
+# Проверка, есть ли в ПК, если такой чел нашёлся
+async def ask_if_in_tuc(message: types.Message, state: FSMContext):
+    await GreetingState.block.set()
+    await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
+    await sleep(1)
+    await message.answer(registration_texts.ASK_IF_IN_TUC_TEXT,
+                         reply_markup=registration_markups.in_tuc_markup)
+    await GreetingState.if_in_tuc.set()
 
 
 # Регистрация с отказом в похожем имени
@@ -92,12 +103,13 @@ async def with_tuc_registration(message: types.Message, state: FSMContext):
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
     await sleep(4)
     await message.answer(registration_texts.REGISTERED_TEXT2,
-                         )
-    await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await sleep(5)
-    await message.answer(registration_texts.IN_TUC_TEXT,
                          reply_markup=menu_markup
                          )
+    # await bot.send_chat_action(message.chat.id, ChatActions.TYPING,
+    #                            )
+    # await sleep(5)
+    # await message.answer(registration_texts.IN_TUC_TEXT,
+    #                      reply_markup=menu_markup)
     await state.finish()
 
 
@@ -128,6 +140,7 @@ async def add_db_no_tuc(message: types.Message, state: FSMContext):
     db.add_user(message.from_user.id, message.from_user.username, fullname, tuc=0)
 
 
+# Добавление со статусом "на проверке"
 async def add_db_unknown_tuc(message: types.Message, state: FSMContext):
     data = await state.get_data()
     fullname = data["fullname"]
@@ -175,7 +188,7 @@ async def joke_without_tuc(message: types.Message, state: FSMContext):
     await state.finish()
 
 
-# Сообщение с вопросом, что с Профкомом
+# Сообщение с вопросом, что с Профкомом, если не нашёл
 async def offer_tuc_check_query(message: types.Message, state: FSMContext):
     await GreetingState.block.set()
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
@@ -264,7 +277,16 @@ def register_registration_handlers():
     dp.register_message_handler(request_text,
                                 F.text.startswith("/"),
                                 state=GreetingState.fullname)
+    # dp.register_message_handler(with_tuc_registration,
+    #                             text=registration_texts.IT_IS_ME_SIMILAR_BUTTON_TEXT,
+    #                             state=GreetingState.found_similar)
     dp.register_message_handler(with_tuc_registration,
+                                text=registration_texts.SECOND_CHECK_IN_TUC_BUTTON_TEXT,
+                                state=GreetingState.if_in_tuc)
+    dp.register_message_handler(register_without_tuc,
+                                text=registration_texts.SECOND_CHECK_NOT_IN_TUC_BUTTON_TEXT,
+                                state=GreetingState.if_in_tuc)
+    dp.register_message_handler(ask_if_in_tuc,
                                 text=registration_texts.IT_IS_ME_SIMILAR_BUTTON_TEXT,
                                 state=GreetingState.found_similar)
     dp.register_message_handler(similar_fullname_refused,
@@ -288,4 +310,3 @@ def register_registration_handlers():
     dp.register_callback_query_handler(check_tuc_admins_chat_onclick,
                                        registration_markups.tuc_check_cd.filter(),
                                        state="*")
-
