@@ -34,6 +34,12 @@ class OrgDataBase(DataBase):
             return False
         return res[0]
 
+    def get_event_reward(self, event_id):
+        res = self.execute("SELECT reward FROM events WHERE id = ?", event_id, fetch="ONE")
+        if not res or not res[0]:
+            return False
+        return res[0]
+
     def get_events_visited(self, tg_id):
         res = self.execute("SELECT event_id FROM visits WHERE tg_id = ?", tg_id, fetch=True)
         if not res or not res[0]:
