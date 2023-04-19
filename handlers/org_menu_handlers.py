@@ -11,12 +11,12 @@ from middleware import admins
 from fsm.scaner_fsm import ScanerState
 
 
+@admins.check(level=1)
 async def send_menu_on_update(update: Union[Message, CallbackQuery], state: Union[FSMContext, None]):
     if isinstance(update, CallbackQuery):
         message = update.message
     else:
         message = update
-
     await message.answer(org_scaner_texts.ORG_MENU_TEXT, reply_markup=org_menu_markups.org_menu_markup)
 
 
@@ -25,7 +25,7 @@ async def input_code(message: Message, state: FSMContext):
     event_id = db.get_event_id(message.from_user.id)
     event_name = db.get_event_name(event_id)
     if not event_name:
-        print("no name")
+        print("no name")  # TODO
         # await message.answer(org_scaner_texts.NO_EVENT_ERROR_TEXT)
         # await asyncio.sleep(1)
         # await message.answer(org_scaner_texts.BACK_TO_MENU_TEXT)
@@ -34,6 +34,7 @@ async def input_code(message: Message, state: FSMContext):
     await ScanerState.scan.set()
 
 
+@admins.check(level=1)
 async def scan_code(message: Message, state: FSMContext):
     """ проверка введенного кода """
     enter_code = message.text
@@ -59,17 +60,18 @@ async def scan_code(message: Message, state: FSMContext):
         await message.answer(org_scaner_texts.SCAN_CODE_TEXT)
         return
 
-    money_value = 100  # доделать с базой данных
+    money_value = 100  # TODO доделать с базой данных
 
     await message.answer(org_scaner_texts.GIVE_MONEY_TEMPLATE.format(participant_name, money_value),
                          reply_markup=org_menu_markups.get_yes_no_markup())
-    await state.update_data({"participant_id":   participant_id,
+    await state.update_data({"participant_id": participant_id,
                              "participant_name": participant_name,
-                             "event_id":         event_id,
-                             "money_value":      money_value})
+                             "event_id": event_id,
+                             "money_value": money_value})
     await ScanerState.give_money.set()
 
 
+@admins.check(level=1)
 async def give_money(callback_query: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     tg_id = data["participant_id"]
@@ -85,6 +87,7 @@ async def give_money(callback_query: CallbackQuery, state: FSMContext):
     await ScanerState.scan.set()
 
 
+@admins.check(level=1)
 async def give_not_money(callback_query: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     name = data["participant_name"]

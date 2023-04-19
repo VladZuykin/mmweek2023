@@ -5,7 +5,7 @@ from database import org_db_funcs
 
 
 config = Config("config.json")
-bot = Bot(token=config.bot_token)
+bot = Bot(token=config.org_bot_token)
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 db = org_db_funcs.OrgDataBase(config.db_path)
