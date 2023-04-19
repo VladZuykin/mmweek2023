@@ -9,6 +9,7 @@ from handlers import registration_handlers, menu_handlers
 
 if __name__ == '__main__':
     print("Bot startup.")
+
     registration_handlers.register_registration_handlers()
     menu_handlers.register_menu_handlers()
     dp.middleware.setup(admins.AdminMalware(db))
