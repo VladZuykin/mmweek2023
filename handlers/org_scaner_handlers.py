@@ -9,16 +9,7 @@ from markups import org_menu_markups
 from texts import org_scaner_texts, org_menu_texts
 from org_bot_create import dp, db
 from middleware import admins
-from fsm.scaner_fsm import ScanerState
-
-
-@admins.check(level=1)
-async def send_menu_on_update(update: Union[Message, CallbackQuery], state: Union[FSMContext, None]):
-    if isinstance(update, CallbackQuery):
-        message = update.message
-    else:
-        message = update
-    await message.answer(org_menu_texts.ORG_MENU_TEXT, reply_markup=org_menu_markups.org_menu_markup)
+from fsm.org_menu_fsm import ScanerState
 
 
 @admins.check(level=1)
@@ -93,10 +84,7 @@ async def give_not_money(callback_query: CallbackQuery, state: FSMContext):
     await ScanerState.scan.set()
 
 
-def register_org_menu_handlers():
-    dp.register_message_handler(send_menu_on_update,
-                                state="*",
-                                commands=['start'])
+def register_org_scaner_handlers():
     dp.register_message_handler(input_code,
                                 text=org_menu_texts.MENU_SCANER_BUTTON_TEXT,
                                 state="*")

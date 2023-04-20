@@ -4,3 +4,6 @@ TZ = pytz.timezone("Europe/Moscow")
 
 
 DATETIME_FORMAT = "%d.%m.%Y %H.%M"
+
+
+PERIOD_TYPES = ['ч', 'д']

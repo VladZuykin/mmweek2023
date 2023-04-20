@@ -52,6 +52,19 @@ class OrgDataBase(DataBase):
     def add_money(self, tg_id, money_value):
         self.execute("UPDATE users SET money = money + ? WHERE tg_id = ?", money_value, tg_id, commit=True)
 
+    def add_promo(self, name, money, can_use, time_registered, time_ends):
+        self.execute("INSERT INTO promo (name, money, can_use, time_registered, time_ends) VALUES (?, ?, ?, ?, ?)",
+                     name, money, can_use, time_registered, time_ends, commit=True)
+
+    def get_promo_id(self, name):
+        res = self.execute("SELECT id FROM promo WHERE name = ?", name, fetch="ONE")
+        if not res or not res[0]:
+            return False
+        return res[0]
+
+    def get_promo_list(self):  # TODO
+        pass
+
 
 if __name__ == '__main__':
     db = OrgDataBase("mmweek2023db.db")
