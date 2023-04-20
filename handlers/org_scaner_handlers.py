@@ -1,6 +1,3 @@
-import asyncio
-
-from typing import Union
 from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
 from aiogram.dispatcher import FSMContext
 
@@ -17,11 +14,10 @@ async def input_code(message: Message, state: FSMContext):
     event_id = db.get_event_id(message.from_user.id)
     event_name = db.get_event_name(event_id)
     if not event_name:
-        print("no name")  # TODO
-        # await message.answer(org_scaner_texts.NO_EVENT_ERROR_TEXT)
-        # await message.answer(org_scaner_texts.BACK_TO_MENU_TEXT)
-        # return
-    await message.answer(org_scaner_texts.SCAN_CODE_TEMPLATE.format(event_name), reply_markup=ReplyKeyboardRemove())
+        await message.answer(org_scaner_texts.NO_EVENT_ERROR_TEXT)
+        return
+    await message.answer(org_scaner_texts.SCAN_CODE_TEMPLATE.format(event_name),
+                         reply_markup=org_menu_markups.back_to_menu_markup)
     await ScanerState.scan.set()
 
 
@@ -29,8 +25,9 @@ async def input_code(message: Message, state: FSMContext):
 async def scan_code(message: Message, state: FSMContext):
     """ проверка введенного кода """
     enter_code = message.text
-    if enter_code.casefold() == "отмена":
-        await message.answer(org_menu_texts.BACK_TO_MENU_TEXT, reply_markup=org_menu_markups.org_menu_markup)
+    if enter_code.casefold() == org_menu_texts.BACK_TO_MENU_BUTTON_TEXT.casefold():
+        await message.answer(org_menu_texts.BACK_TO_MENU_TEXT,
+                             reply_markup=org_menu_markups.org_menu_markup)
         await state.finish()
         return
 
@@ -51,7 +48,7 @@ async def scan_code(message: Message, state: FSMContext):
     money_value = db.get_event_reward(event_id)
 
     await message.answer(org_scaner_texts.GIVE_MONEY_TEMPLATE.format(participant_name, money_value),
-                         reply_markup=org_menu_markups.get_yes_no_markup())
+                         reply_markup=org_menu_markups.yes_no_markup)
     await state.update_data({"participant_id": participant_id,
                              "participant_name": participant_name,
                              "event_id": event_id,
@@ -70,7 +67,8 @@ async def give_money(callback_query: CallbackQuery, state: FSMContext):
     db.add_money(tg_id, money_value)
     await callback_query.message.edit_text(org_scaner_texts.MONEY_GIVEN_TEMPLATE.format(money_value, name),
                                            reply_markup=None)
-    await callback_query.message.answer(org_scaner_texts.SCAN_CODE_TEXT)
+    await callback_query.message.answer(org_scaner_texts.SCAN_CODE_TEXT,
+                                        reply_markup=org_menu_markups.back_to_menu_markup)
     await ScanerState.scan.set()
 
 
@@ -80,8 +78,14 @@ async def give_not_money(callback_query: CallbackQuery, state: FSMContext):
     name = data["participant_name"]
     await callback_query.message.edit_text(org_scaner_texts.NOT_MONEY_GIVEN_TEMPLATE.format(name),
                                            reply_markup=None)
-    await callback_query.message.answer(org_scaner_texts.SCAN_CODE_TEXT)
+    await callback_query.message.answer(org_scaner_texts.SCAN_CODE_TEXT,
+                                        reply_markup=org_menu_markups.back_to_menu_markup)
     await ScanerState.scan.set()
+
+
+@admins.check(level=1)
+async def coerce_back_to_menu(message: Message, state: FSMContext):
+    await message.answer(org_scaner_texts.COERCE_BACK_TO_MENU_TEXT, reply_markup=ReplyKeyboardRemove())
 
 
 def register_org_scaner_handlers():
@@ -96,3 +100,5 @@ def register_org_scaner_handlers():
     dp.register_callback_query_handler(give_not_money,
                                        org_menu_callbacks.GIVE_MONEY_CB.filter(decision='0'),
                                        state=ScanerState.give_money)
+    dp.register_message_handler(coerce_back_to_menu,
+                                state=ScanerState.give_money)

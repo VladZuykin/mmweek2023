@@ -1,4 +1,6 @@
+import constants
 from database.db_funcs import DataBase
+import datetime as dt
 
 
 class OrgDataBase(DataBase):
@@ -62,8 +64,15 @@ class OrgDataBase(DataBase):
             return False
         return res[0]
 
-    def get_promo_list(self):  # TODO
-        pass
+    def get_promo_list(self):
+        res = self.execute("SELECT name, money, can_use, used, time_ends FROM promo", fetch=True)
+        return list(map(lambda x:
+                        [x[0],
+                         x[1],
+                         x[2],
+                         x[3],
+                         dt.datetime.strptime(x[4], constants.DATETIME_FORMAT).astimezone(constants.TZ)],
+                        res))
 
 
 if __name__ == '__main__':
