@@ -15,6 +15,7 @@ from magic_filter import F
 import datetime as dt
 
 import constants
+import middleware.functions
 from fsm import menu_fsm
 from fsm.registration_fsm import GreetingState
 from functions import menu_functions
@@ -106,10 +107,10 @@ async def show_event(callback: CallbackQuery, state: FSMContext, callback_data: 
                                      )
 
 
-async def show_help(message: types.Message, state: FSMContext):
-    await message.answer(db.get_help_text(),
-                         reply_markup=menu_markups.help_markup,
-                         parse_mode=ParseMode.HTML)
+# async def show_help(message: types.Message, state: FSMContext):
+#     await message.answer(db.get_help_text(),
+#                          reply_markup=menu_markups.help_markup,
+#                          parse_mode=ParseMode.HTML)
 
 
 async def support_input(message: types.Message, state: FSMContext):
@@ -129,10 +130,19 @@ async def cancel(message: types.Message, state: FSMContext):
 
 async def support_sent(message: types.Message, state: FSMContext):
     user = message.from_user
-    await bot.send_message(chat_id=config.support_chat_id,
-                           text=menu_texts.TO_SUPPORT_MESSAGE_TEMPLATE.format(user.username, user.url, message.text))
-    await message.answer(menu_texts.HELP_MESSAGE_SENT,
-                         reply_markup=menu_markups.menu_markup)
+    support_request_sent = db.get_last_support_request_time(user.id)
+    now = dt.datetime.now(tz=constants.TZ)
+    if support_request_sent and  now < support_request_sent + constants.SUPPORT_TIMEDELTA:
+        ans_text = menu_texts.TOO_FREQUENTLY_TEMPLATE.format(constants.SUPPORT_TIMEDELTA_ACCUSATIVE_STR)
+        await message.answer(ans_text,
+                             reply_markup=menu_markups.menu_markup)
+    else:
+        await bot.send_message(chat_id=config.support_chat_id,
+                               text=menu_texts.TO_SUPPORT_MESSAGE_TEMPLATE.format(user.username, user.url, message.text))
+        await message.answer(menu_texts.HELP_MESSAGE_SENT,
+                             reply_markup=menu_markups.menu_markup)
+        db.add_transaction(constants.TransactionTypes.SUPPORT_REQUEST.value,
+                           message.from_user.id, None, message.text)
     await state.finish()
 
 
@@ -161,6 +171,10 @@ async def promo_input(message: types.Message, state: FSMContext):
                              )
 
 
+async def show_shop_temp_message(message: types.Message, state: FSMContext):
+    await message.answer(menu_texts.STORE_TEMP_TEXT)
+
+
 def register_menu_handlers():
     dp.register_message_handler(send_menu_on_update,
                                 F.from_user.func(lambda user: db.user_registered(user.id)),
@@ -172,9 +186,10 @@ def register_menu_handlers():
     dp.register_message_handler(show_profile,
                                 text=menu_texts.MENU_PROFILE_BUTTON_TEXT,
                                 state="*", )
-    dp.register_message_handler(show_help,
-                                text=menu_texts.MENU_HELP_BUTTON_TEXT,
-                                state="*", )
+    # dp.register_message_handler(show_help,
+
+    #                             text=menu_texts.MENU_HELP_BUTTON_TEXT,
+    #                             state="*", )
     dp.register_message_handler(show_schedule,
                                 text=menu_texts.MENU_SCHEDULE_BUTTON_TEXT,
                                 state="*")
@@ -205,6 +220,9 @@ def register_menu_handlers():
     dp.register_message_handler(promo_input,
                                 state=menu_fsm.PromoState.input_wait
                                 )
+    dp.register_message_handler(show_shop_temp_message,
+                                state=None,
+                                text=menu_texts.MENU_STORE_BUTTON_TEXT)
     # Обязательно оставить в конце, чтобы отвечал на остальные сообщения
     dp.register_message_handler(any_message_menu_respond,
                                 F.from_user.func(lambda user: db.user_registered(user.id)),

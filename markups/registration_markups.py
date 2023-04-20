@@ -4,7 +4,7 @@ from aiogram.utils.callback_data import CallbackData
 
 from texts.registration_texts import NOT_IN_TUC_BUTTON_TEXT, FULLNAME_FAILURE_BUTTON_TEXT, ACTUALLY_IN_TUC_BUTTON_TEXT, \
     SEND_TUC_MANUAL_CHECK_QUERY_TEXT, NO_TUC_MANUAL_CHECK_QUERY_TEXT, IT_IS_ME_SIMILAR_BUTTON_TEXT, \
-    IT_IS_NOT_ME_SIMILAR_BUTTON_TEXT
+    IT_IS_NOT_ME_SIMILAR_BUTTON_TEXT, SECOND_CHECK_NOT_IN_TUC_BUTTON_TEXT, SECOND_CHECK_IN_TUC_BUTTON_TEXT
 
 NOT_IN_TUC_MARKUP = ReplyKeyboardMarkup([[KeyboardButton(NOT_IN_TUC_BUTTON_TEXT)],
                                          [KeyboardButton(FULLNAME_FAILURE_BUTTON_TEXT),
@@ -20,6 +20,10 @@ SIMILAR_ASK_MARKUP = ReplyKeyboardMarkup([[KeyboardButton(IT_IS_ME_SIMILAR_BUTTO
                                           [KeyboardButton(IT_IS_NOT_ME_SIMILAR_BUTTON_TEXT)]],
                                          resize_keyboard=True, one_time_keyboard=True)
 
+in_tuc_markup = ReplyKeyboardMarkup(resize_keyboard=True,
+                                    one_time_keyboard=True)
+in_tuc_markup.add(SECOND_CHECK_IN_TUC_BUTTON_TEXT)
+in_tuc_markup.add(SECOND_CHECK_NOT_IN_TUC_BUTTON_TEXT)
 
 def get_tuc_check_inline_keyboard(tg_id):
     markup = InlineKeyboardMarkup()
