@@ -1,4 +1,6 @@
+import constants
 from database.db_funcs import DataBase
+import datetime as dt
 
 
 class OrgDataBase(DataBase):
@@ -51,6 +53,26 @@ class OrgDataBase(DataBase):
 
     def add_money(self, tg_id, money_value):
         self.execute("UPDATE users SET money = money + ? WHERE tg_id = ?", money_value, tg_id, commit=True)
+
+    def add_promo(self, name, money, can_use, time_registered, time_ends):
+        self.execute("INSERT INTO promo (name, money, can_use, time_registered, time_ends) VALUES (?, ?, ?, ?, ?)",
+                     name, money, can_use, time_registered, time_ends, commit=True)
+
+    def get_promo_id(self, name):
+        res = self.execute("SELECT id FROM promo WHERE name = ?", name, fetch="ONE")
+        if not res or not res[0]:
+            return False
+        return res[0]
+
+    def get_promo_list(self):
+        res = self.execute("SELECT name, money, can_use, used, time_ends FROM promo", fetch=True)
+        return list(map(lambda x:
+                        [x[0],
+                         x[1],
+                         x[2],
+                         x[3],
+                         dt.datetime.strptime(x[4], constants.DATETIME_FORMAT).astimezone(constants.TZ)],
+                        res))
 
 
 if __name__ == '__main__':

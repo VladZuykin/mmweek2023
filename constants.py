@@ -11,6 +11,8 @@ SUPPORT_TIMEDELTA = dt.timedelta(minutes=120)
 SUPPORT_TIMEDELTA_ACCUSATIVE_STR =  dtdict_to_str(dt_to_dtdict(SUPPORT_TIMEDELTA), ACCUSATIVE_TIME_UNITS_FORMS)
 
 
+PERIOD_TYPES = ['ч', 'д']
+
 class TransactionTypes(Enum):
     USER_REGISTER = "user_register"
     SUPPORT_REQUEST = "support_request" # Запрос в тех. поддержку
