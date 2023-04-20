@@ -11,7 +11,7 @@ MENU_STORE_BUTTON_TEXT = "Магазин"
 MENU_PROMO_BUTTON_TEXT = "Ввести промокод"
 MENU_HELP_BUTTON_TEXT = "Поддержка | FAQ"
 
-HELP_BUTTON_TEXT = "Связаться с тех. поддержкой"
+HELP_BUTTON_TEXT = "Поддержка"
 BACK_BUTTON_TEXT = "Назад"
 CANCEL_TEXT = "Отмена"
 

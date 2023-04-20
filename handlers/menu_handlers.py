@@ -87,11 +87,14 @@ async def edit_show_schedule(callback: CallbackQuery, state: FSMContext):
                                      parse_mode=ParseMode.HTML,
                                      reply_markup=menu_markups.get_schedule_markup(events))
 
+
 async def show_schedule(message: types.Message, state: FSMContext):
     events = get_events_for(message.from_user.id)
     await message.answer(menu_texts.get_schedule_text(events),
                          parse_mode=ParseMode.HTML,
                          reply_markup=menu_markups.get_schedule_markup(events))
+
+
 async def show_event(callback: CallbackQuery, state: FSMContext, callback_data: dict):
     event_id = int(callback_data.get('event_id'))
     event = db.get_event(event_id)
@@ -103,10 +106,10 @@ async def show_event(callback: CallbackQuery, state: FSMContext, callback_data: 
                                      )
 
 
-async def show_help(message: types.Message, state: FSMContext):
-    await message.answer(db.get_help_text(),
-                         reply_markup=menu_markups.help_markup,
-                         parse_mode=ParseMode.HTML)
+# async def show_help(message: types.Message, state: FSMContext):
+#     await message.answer(db.get_help_text(),
+#                          reply_markup=menu_markups.help_markup,
+#                          parse_mode=ParseMode.HTML)
 
 
 async def support_input(message: types.Message, state: FSMContext):
@@ -131,6 +134,8 @@ async def support_sent(message: types.Message, state: FSMContext):
     await message.answer(menu_texts.HELP_MESSAGE_SENT,
                          reply_markup=menu_markups.menu_markup)
     await state.finish()
+    db.add_transaction(constants.TransactionTypes.SUPPORT_REQUEST.value,
+                       message.from_user.id, None, message.text)
 
 
 async def promo_respond(message: types.Message, state: FSMContext):
@@ -157,6 +162,7 @@ async def promo_input(message: types.Message, state: FSMContext):
                                                               one_time_keyboard=True).add(menu_markups.CANCEL_BUTTON)
                              )
 
+
 async def show_shop_temp_message(message: types.Message, state: FSMContext):
     await message.answer(menu_texts.STORE_TEMP_TEXT)
 
@@ -172,9 +178,9 @@ def register_menu_handlers():
     dp.register_message_handler(show_profile,
                                 text=menu_texts.MENU_PROFILE_BUTTON_TEXT,
                                 state="*", )
-    dp.register_message_handler(show_help,
-                                text=menu_texts.MENU_HELP_BUTTON_TEXT,
-                                state="*", )
+    # dp.register_message_handler(show_help,
+    #                             text=menu_texts.MENU_HELP_BUTTON_TEXT,
+    #                             state="*", )
     dp.register_message_handler(show_schedule,
                                 text=menu_texts.MENU_SCHEDULE_BUTTON_TEXT,
                                 state="*")
