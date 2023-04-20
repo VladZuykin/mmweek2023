@@ -11,6 +11,8 @@ MENU_STORE_BUTTON_TEXT = "Магазин"
 MENU_PROMO_BUTTON_TEXT = "Ввести промокод"
 MENU_HELP_BUTTON_TEXT = "Поддержка | FAQ"
 
+TOO_FREQUENTLY_TEMPLATE = "Вы слишком общительный, подождите {} и сможете написать снова. А пока приветствую в своём меню."
+
 HELP_BUTTON_TEXT = "Поддержка"
 BACK_BUTTON_TEXT = "Назад"
 CANCEL_TEXT = "Отмена"
