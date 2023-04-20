@@ -1,5 +1,3 @@
-import asyncio
-import itertools
 import random
 import sqlite3
 import string
@@ -9,8 +7,6 @@ from fuzzywuzzy import fuzz
 
 import constants
 from middleware import texts
-
-from functions import registration_functions
 
 
 class DataBase:
@@ -112,6 +108,14 @@ class DataBase:
                                 CONSTRAINT was PRIMARY KEY (promo_id, tg_id));""",
                      commit=True)
 
+        self.execute("""CREATE TABLE IF NOT EXISTS transactions(
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                type TEXT NOT NULL,
+                                tg_id1 INTEGER,
+                                tg_id2 INTEGER,
+                                data TEXT);
+                                """, commit=True)
+
     def execute(self, clause: str, *args, commit: bool = False, fetch: Union[bool, str] = False) -> Union[list, None]:
         """
         Запрос к БД SQLite
@@ -190,6 +194,10 @@ class DataBase:
         return data[0]
 
     def add_user(self, tg_id, username, fullname, tuc=0):
+        self.add_transaction(constants.TransactionTypes.USER_REGISTER.value,
+                             tg_id,
+                             None,
+                             f"tuc: {tuc}")
         self.execute("INSERT INTO users (tg_id, username, fullname, tuc) VALUES (?, ?, ?, ?) "
                      "ON CONFLICT(tg_id) DO UPDATE SET username = ?, fullname = ?, tuc = ?",
                      tg_id, username, fullname, tuc, username, fullname, tuc,
@@ -227,6 +235,10 @@ class DataBase:
         :return:
         """
         self.execute("UPDATE users SET tuc = ? WHERE tg_id = ?", value, tg_id, commit=True)
+        self.add_transaction(constants.TransactionTypes.SET_TUC.value,
+                             tg_id,
+                             None,
+                             f"{value}")
 
     def user_registered(self, tg_id):
         return bool(self.get_user_info(tg_id, "tg_id"))
@@ -261,6 +273,10 @@ class DataBase:
             while code in codes:
                 code = "".join(str(random.choice(string.digits)) for _ in range(digits))
             self.create_enter_code(tg_id, code)
+            self.add_transaction(constants.TransactionTypes.CODE_GENERATE.value,
+                                 tg_id,
+                                 None,
+                                 code)
         return code
 
     def use_promo(self, tg_id, promo):
@@ -275,41 +291,87 @@ class DataBase:
                             promo,
                             fetch="one")
         if not data:
+            self.add_transaction(constants.TransactionTypes.PROMO_USAGE.value,
+                                 tg_id,
+                                 None,
+                                 f"promo: {promo} doesn't activated: doesn't exists")
             return 1
         promo_id, money, time_ends, used, can_use = data
         if promo_id:
             dt_ends = dt.datetime.strptime(time_ends, constants.DATETIME_FORMAT).astimezone(constants.TZ)
             if dt.datetime.now(constants.TZ) <= dt_ends:
-                # await asyncio.sleep(20)
                 if used < can_use:
                     used_user = self.execute("SELECT promo_id FROM promo_usages WHERE promo_id = ? and tg_id = ?",
                                              promo_id,
                                              tg_id, fetch="one")
                     if not used_user:
                         cur = self.con.cursor()
+                        cur.execute("BEGIN TRANSACTION;")
+                        fail = False
                         try:
-                            cur.execute("BEGIN EXCLUSIVE TRANSACTION;")
-                            cur.execute("UPDATE promo SET used = used + 1 WHERE id = ?;", (promo_id,))
                             cur.execute("INSERT INTO promo_usages (promo_id, tg_id, datetime) VALUES (?, ?, ?);",
                                         (promo_id, tg_id,
                                          dt.datetime.strftime(dt.datetime.now(tz=constants.TZ),
                                                               constants.DATETIME_FORMAT)))
+                            cur.execute("UPDATE promo SET used = used + 1 WHERE id = ?;", (promo_id,)),
                             cur.execute("UPDATE users SET money = money + ? WHERE tg_id = ?;", (money, tg_id))
-                            cur.execute("END TRANSACTION;")
-                            self.con.commit()
-                            cur.close()
-                            return 0
+
                         except (sqlite3.DatabaseError, sqlite3.InternalError) as e:
-                            cur.close()
+                            fail = True
+                        if fail:
+                            cur.execute("ROLLBACK;")
+
+                        else:
+                            cur.execute("END TRANSACTION;")
+                        cur.close()
+                        if fail:
+                            self.add_transaction(constants.TransactionTypes.PROMO_USAGE.value,
+                                                 tg_id,
+                                                 None,
+                                                 f"promo: {promo} doesn't activated bad transaction")
                             return 5
+                        else:
+                            self.add_transaction(constants.TransactionTypes.PROMO_USAGE.value,
+                                                 tg_id,
+                                                 None,
+                                                 f"promo: {promo} activated {money} added")
+                            return 0
                     else:
+                        self.add_transaction(constants.TransactionTypes.PROMO_USAGE.value,
+                                             tg_id,
+                                             None,
+                                             f"promo: {promo} doesn't activated: already used")
                         return 2
                 else:
+                    self.add_transaction(constants.TransactionTypes.PROMO_USAGE.value,
+                                         tg_id,
+                                         None,
+                                         f"promo: {promo} doesn't activated: used too many times")
                     return 4
             else:
+                self.add_transaction(constants.TransactionTypes.PROMO_USAGE.value,
+                                     tg_id,
+                                     None,
+                                     f"promo: {promo} doesn't activated: expired")
                 return 3
         else:
+            self.add_transaction(constants.TransactionTypes.PROMO_USAGE.value,
+                                 tg_id,
+                                 None,
+                                 f"promo: {promo} doesn't activated: doesn't exists")
             return 1
+
+    def add_transaction(self, transaction_type, tg_id1, tg_id2, data):
+        """
+
+        :param transaction_type:
+        :param tg_id1:
+        :param tg_id2:
+        :param data:
+        :return:
+        """
+        self.execute("INSERT INTO transactions (type, tg_id1, tg_id2, data) VALUES (?, ?, ?, ?)",
+                     transaction_type, tg_id1, tg_id2, data, commit=True)
 
 
 def __del__(self):
@@ -318,7 +380,5 @@ def __del__(self):
 
 if __name__ == '__main__':
     db = DataBase("mmweek2023db.db")
-    db.add_event("Отчисление", dt.datetime(year=2023, month=4, day=25, hour=18, minute=0), 50,
-                 description="Это крутое и очень крутое мероприятие, которое преподы сделали специально для вас крутых")
-    # print(db.get_events_summary())
-    # print(db.get_event(2))
+    # db.add_event("Отчисление", dt.datetime(year=2023, month=4, day=25, hour=18, minute=0), 50,
+    #              description="Это крутое и очень крутое мероприятие, которое преподы сделали специально для вас крутых")
