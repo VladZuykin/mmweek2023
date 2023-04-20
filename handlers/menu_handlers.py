@@ -87,14 +87,11 @@ async def edit_show_schedule(callback: CallbackQuery, state: FSMContext):
                                      parse_mode=ParseMode.HTML,
                                      reply_markup=menu_markups.get_schedule_markup(events))
 
-
 async def show_schedule(message: types.Message, state: FSMContext):
     events = get_events_for(message.from_user.id)
     await message.answer(menu_texts.get_schedule_text(events),
                          parse_mode=ParseMode.HTML,
                          reply_markup=menu_markups.get_schedule_markup(events))
-
-
 async def show_event(callback: CallbackQuery, state: FSMContext, callback_data: dict):
     event_id = int(callback_data.get('event_id'))
     event = db.get_event(event_id)

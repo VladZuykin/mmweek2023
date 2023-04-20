@@ -61,7 +61,6 @@ async def get_fullname(message: types.Message, state: FSMContext):
                 reply_markup=registration_markups.SIMILAR_ASK_MARKUP)
             await GreetingState.found_similar.set()
         else:
-            # TODO Сюда сделать вопрос: да или нет всё-таки
             await ask_if_in_tuc(message, state)
     else:
         await message.answer(registration_texts.NOT_IN_TUC_TEXT,
