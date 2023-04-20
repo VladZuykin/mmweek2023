@@ -15,6 +15,7 @@ from magic_filter import F
 import datetime as dt
 
 import constants
+import middleware.functions
 from fsm import menu_fsm
 from fsm.registration_fsm import GreetingState
 from functions import menu_functions
@@ -129,13 +130,20 @@ async def cancel(message: types.Message, state: FSMContext):
 
 async def support_sent(message: types.Message, state: FSMContext):
     user = message.from_user
-    await bot.send_message(chat_id=config.support_chat_id,
-                           text=menu_texts.TO_SUPPORT_MESSAGE_TEMPLATE.format(user.username, user.url, message.text))
-    await message.answer(menu_texts.HELP_MESSAGE_SENT,
-                         reply_markup=menu_markups.menu_markup)
+    support_request_sent = db.get_last_support_request_time(user.id)
+    now = dt.datetime.now(tz=constants.TZ)
+    if support_request_sent and  now < support_request_sent + constants.SUPPORT_TIMEDELTA:
+        ans_text = menu_texts.TOO_FREQUENTLY_TEMPLATE.format(constants.SUPPORT_TIMEDELTA_ACCUSATIVE_STR)
+        await message.answer(ans_text,
+                             reply_markup=menu_markups.menu_markup)
+    else:
+        await bot.send_message(chat_id=config.support_chat_id,
+                               text=menu_texts.TO_SUPPORT_MESSAGE_TEMPLATE.format(user.username, user.url, message.text))
+        await message.answer(menu_texts.HELP_MESSAGE_SENT,
+                             reply_markup=menu_markups.menu_markup)
+        db.add_transaction(constants.TransactionTypes.SUPPORT_REQUEST.value,
+                           message.from_user.id, None, message.text)
     await state.finish()
-    db.add_transaction(constants.TransactionTypes.SUPPORT_REQUEST.value,
-                       message.from_user.id, None, message.text)
 
 
 async def promo_respond(message: types.Message, state: FSMContext):
@@ -179,6 +187,7 @@ def register_menu_handlers():
                                 text=menu_texts.MENU_PROFILE_BUTTON_TEXT,
                                 state="*", )
     # dp.register_message_handler(show_help,
+
     #                             text=menu_texts.MENU_HELP_BUTTON_TEXT,
     #                             state="*", )
     dp.register_message_handler(show_schedule,

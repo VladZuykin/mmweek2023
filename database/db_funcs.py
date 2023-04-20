@@ -113,6 +113,7 @@ class DataBase:
                                 type TEXT NOT NULL,
                                 tg_id1 INTEGER,
                                 tg_id2 INTEGER,
+                                datetime TEXT,
                                 data TEXT);
                                 """, commit=True)
 
@@ -370,8 +371,34 @@ class DataBase:
         :param data:
         :return:
         """
-        self.execute("INSERT INTO transactions (type, tg_id1, tg_id2, data) VALUES (?, ?, ?, ?)",
-                     transaction_type, tg_id1, tg_id2, data, commit=True)
+        datetime = dt.datetime.now(tz=constants.TZ).strftime(constants.LOG_DATETIME_FORMAT)
+        self.execute("INSERT INTO transactions (type, tg_id1, tg_id2, datetime, data) VALUES (?, ?, ?, ?, ?)",
+                     transaction_type, tg_id1, tg_id2, datetime, data, commit=True)
+
+    def get_last_transaction(self, transaction_type, tg_id1=None, tg_id2=None):
+        if tg_id2 is None:
+            data = self.execute("SELECT type, tg_id1, tg_id2, datetime, data FROM transactions "
+                                "WHERE type = ? and tg_id1 = ?",
+                                transaction_type, tg_id1, fetch="all")
+        elif tg_id1 is None:
+            data = self.execute("SELECT type, tg_id1, tg_id2, datetime, data FROM transactions "
+                                "WHERE type = ? and tg_id2 = ?",
+                                transaction_type, tg_id2, fetch="all")
+        else:
+            data = self.execute("SELECT type, tg_id1, tg_id2, datetime, data FROM transactions "
+                                "WHERE type = ? and tg_id1 = ? and tg_id2 = ?",
+                                transaction_type, tg_id1, tg_id2, fetch="all")
+        if not data:
+            return None
+        maxim = max(data, key=lambda x:
+            dt.datetime.strptime(x[3], constants.LOG_DATETIME_FORMAT).astimezone(tz=constants.TZ))
+        return dt.datetime.strptime(maxim[3], constants.LOG_DATETIME_FORMAT).astimezone(tz=constants.TZ)
+
+    def get_last_support_request_time(self, tg_id):
+        data = self.get_last_transaction(constants.TransactionTypes.SUPPORT_REQUEST.value, tg_id1=tg_id)
+        if not data:
+            return None
+        return data
 
 
 def __del__(self):
@@ -382,3 +409,4 @@ if __name__ == '__main__':
     db = DataBase("mmweek2023db.db")
     # db.add_event("Отчисление", dt.datetime(year=2023, month=4, day=25, hour=18, minute=0), 50,
     #              description="Это крутое и очень крутое мероприятие, которое преподы сделали специально для вас крутых")
+    # print(db.get_last_support_request_time(702447805))
