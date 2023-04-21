@@ -116,7 +116,7 @@ async def show_event(callback: CallbackQuery, state: FSMContext, callback_data: 
 async def support_input(message: types.Message, state: FSMContext):
     await message.answer(menu_texts.HELP_INPUT_REQUEST,
                          reply_markup=ReplyKeyboardMarkup(
-                             resize_keyboard=True, one_time_keyboard=True
+                             resize_keyboard=True
                          ).add(menu_markups.CANCEL_BUTTON)
                          )
     await menu_fsm.SupportState.input_wait.set()
@@ -132,13 +132,14 @@ async def support_sent(message: types.Message, state: FSMContext):
     user = message.from_user
     support_request_sent = db.get_last_support_request_time(user.id)
     now = dt.datetime.now(tz=constants.TZ)
-    if support_request_sent and  now < support_request_sent + constants.SUPPORT_TIMEDELTA:
+    if support_request_sent and now < support_request_sent + constants.SUPPORT_TIMEDELTA:
         ans_text = menu_texts.TOO_FREQUENTLY_TEMPLATE.format(constants.SUPPORT_TIMEDELTA_ACCUSATIVE_STR)
         await message.answer(ans_text,
                              reply_markup=menu_markups.menu_markup)
     else:
         await bot.send_message(chat_id=config.support_chat_id,
-                               text=menu_texts.TO_SUPPORT_MESSAGE_TEMPLATE.format(user.username, user.url, message.text))
+                               text=menu_texts.TO_SUPPORT_MESSAGE_TEMPLATE.format(user.username, user.url,
+                                                                                  message.text))
         await message.answer(menu_texts.HELP_MESSAGE_SENT,
                              reply_markup=menu_markups.menu_markup)
         db.add_transaction(constants.TransactionTypes.SUPPORT_REQUEST.value,
@@ -148,8 +149,7 @@ async def support_sent(message: types.Message, state: FSMContext):
 
 async def promo_respond(message: types.Message, state: FSMContext):
     await message.answer(menu_texts.PROMO_INPUT_REQUEST,
-                         reply_markup=ReplyKeyboardMarkup(resize_keyboard=True,
-                                                          one_time_keyboard=True).add(menu_markups.CANCEL_BUTTON))
+                         reply_markup=ReplyKeyboardMarkup(resize_keyboard=True).add(menu_markups.CANCEL_BUTTON))
     await menu_fsm.PromoState.input_wait.set()
 
 
@@ -166,8 +166,7 @@ async def promo_input(message: types.Message, state: FSMContext):
         await state.finish()
     else:
         await message.answer(menu_texts.PROMO_DOESNT_EXISTS,
-                             reply_markup=ReplyKeyboardMarkup(resize_keyboard=True,
-                                                              one_time_keyboard=True).add(menu_markups.CANCEL_BUTTON)
+                             reply_markup=ReplyKeyboardMarkup(resize_keyboard=True).add(menu_markups.CANCEL_BUTTON)
                              )
 
 

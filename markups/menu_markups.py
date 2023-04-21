@@ -18,8 +18,7 @@ menu_markup.add(menu_texts.MENU_PROMO_BUTTON_TEXT,
                 )
 
 
-help_markup = ReplyKeyboardMarkup(resize_keyboard=True,
-                                  one_time_keyboard=True).add(menu_texts.HELP_BUTTON_TEXT).add(
+help_markup = ReplyKeyboardMarkup(resize_keyboard=True).add(menu_texts.HELP_BUTTON_TEXT).add(
     menu_texts.BACK_BUTTON_TEXT)
 
 
