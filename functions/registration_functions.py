@@ -1,3 +1,4 @@
+import sqlite3
 from typing import Union
 
 import requests_async
@@ -40,3 +41,19 @@ def are_different_content_sentences(sentence1: str, sentence2: str):
     if get_capitalised_words(sentence1) == get_capitalised_words(sentence2):
         return False
     return True
+
+def reward_previous_bot(username, previous_db_path="database/previous_db.sqlite"):
+    con = sqlite3.connect(previous_db_path)
+    cur = con.cursor()
+
+    first_response = cur.execute("SELECT coins FROM Users where tg_id = ?",
+                                 (username,)).fetchone()
+    if first_response and first_response[0]:
+        return True
+
+    second_response = cur.execute(f"SELECT {', '.join([str(num) for num in range(1, 41)])} "
+                                  f"FROM purchases "
+                                  f"WHERE user_id = ?", (username, )).fetchone()
+    if second_response and sum(second_response):
+        return True
+    return False

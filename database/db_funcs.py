@@ -204,6 +204,13 @@ class DataBase:
                      tg_id, username, fullname, tuc, username, fullname, tuc,
                      commit=True)
 
+    def add_money(self, tg_id, money, transaction_data=None):
+        self.add_transaction(constants.TransactionTypes.MONEY_GET.value,
+                             tg_id,
+                             None,
+                             transaction_data)
+        self.execute("UPDATE users SET money = money + ? WHERE tg_id = ?", money, tg_id, commit=True)
+
     def get_text(self, name):
         res = self.execute("SELECT content FROM texts WHERE name = ?", name, fetch="ONE")
         if not res or not res[0]:

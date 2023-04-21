@@ -29,10 +29,10 @@ async def greetings(message: types.Message, state: FSMContext):
     await sleep(2)
     await message.answer(registration_texts.GREETING_SECOND_MESSAGE_TEXT, parse_mode=ParseMode.HTML)
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await sleep(5)
+    await sleep(4.5)
     await message.answer(registration_texts.GREETING_THIRD_MESSAGE_TEXT)
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await sleep(5)
+    await sleep(5.5)
     await message.answer(registration_texts.GREETING_FOURTH_MESSAGE_TEXT)
     await GreetingState.fullname.set()
 
@@ -109,6 +109,7 @@ async def with_tuc_registration(message: types.Message, state: FSMContext):
     # await sleep(5)
     # await message.answer(registration_texts.IN_TUC_TEXT,
     #                      reply_markup=menu_markup)
+    await post_registration(message, state)
     await state.finish()
 
 
@@ -151,7 +152,7 @@ async def register_without_tuc(message: types.Message, state: FSMContext):
     await GreetingState.block.set()
     await add_db_no_tuc(message, state)
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-    await sleep(1)
+    await sleep(3)
     await message.answer(registration_texts.CAN_JOIN_TUC_TEXT,
                          reply_markup=ReplyKeyboardRemove())
     await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
@@ -164,6 +165,7 @@ async def register_without_tuc(message: types.Message, state: FSMContext):
     await message.answer(registration_texts.REGISTERED_TEXT2,
                          reply_markup=menu_markup
                          )
+    await post_registration(message, state)
     await state.finish()
 
 
@@ -184,6 +186,7 @@ async def joke_without_tuc(message: types.Message, state: FSMContext):
     await message.answer(registration_texts.REGISTERED_TEXT2,
                          reply_markup=menu_markup
                          )
+    await post_registration(message, state)
     await state.finish()
 
 
@@ -260,6 +263,17 @@ async def check_tuc_admins_chat_onclick(callback: types.CallbackQuery, state: FS
         await callback.message.edit_text(text)
     else:
         await callback.answer("Вы не успели отметить :(")
+
+
+async def post_registration(message: types.Message, state: FSMContext):
+    username = message.from_user.username
+    # Сообщение для пользователей предыдущего бота
+    if username and registration_functions.reward_previous_bot(username):
+        db.add_money(message.from_user.id, constants.PREVIOUS_REGISTERED_BOT_REWARD,
+                     transaction_data="previous_bot_reward")
+        await sleep(1)
+        await message.answer(
+            registration_texts.PREVIOUS_BOT_REGISTERED_TEMPLATE.format(constants.PREVIOUS_REGISTERED_BOT_REWARD))
 
 
 def register_registration_handlers():
