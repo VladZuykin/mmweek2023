@@ -23,7 +23,7 @@ async def get_random_cat_from_web() -> Union[io.BytesIO, bool]:
 # Получение картинки из папки
 def get_cat_from_files(path="misc/cats"):
     names = os.listdir(path)
-    with open(path + "/" if not path.endswith("/") else "" + choice(names), "rb") as f:
+    with open(path + ("/" if not path.endswith("/") else "") + choice(names), "rb") as f:
         img_bytes = f.read()
     return io.BytesIO(img_bytes)
 

@@ -84,14 +84,14 @@ def get_events_for(tg_id):
 
 async def edit_show_schedule(callback: CallbackQuery, state: FSMContext):
     events = get_events_for(callback.from_user.id)
-    await callback.message.edit_text(menu_texts.get_schedule_text(events),
+    await callback.message.edit_text(db.get_schedule_text(),
                                      parse_mode=ParseMode.HTML,
                                      reply_markup=menu_markups.get_schedule_markup(events))
 
 
 async def show_schedule(message: types.Message, state: FSMContext):
     events = get_events_for(message.from_user.id)
-    await message.answer(menu_texts.get_schedule_text(events),
+    await message.answer(db.get_schedule_text(),
                          parse_mode=ParseMode.HTML,
                          reply_markup=menu_markups.get_schedule_markup(events))
 
@@ -107,10 +107,10 @@ async def show_event(callback: CallbackQuery, state: FSMContext, callback_data: 
                                      )
 
 
-# async def show_help(message: types.Message, state: FSMContext):
-#     await message.answer(db.get_help_text(),
-#                          reply_markup=menu_markups.help_markup,
-#                          parse_mode=ParseMode.HTML)
+async def show_help(message: types.Message, state: FSMContext):
+    await message.answer(db.get_help_text(),
+                         reply_markup=menu_markups.help_markup,
+                         parse_mode=ParseMode.HTML)
 
 
 async def support_input(message: types.Message, state: FSMContext):
@@ -185,10 +185,10 @@ def register_menu_handlers():
     dp.register_message_handler(show_profile,
                                 text=menu_texts.MENU_PROFILE_BUTTON_TEXT,
                                 state="*", )
-    # dp.register_message_handler(show_help,
+    dp.register_message_handler(show_help,
 
-    #                             text=menu_texts.MENU_HELP_BUTTON_TEXT,
-    #                             state="*", )
+                                text=menu_texts.MENU_HELP_BUTTON_TEXT,
+                                state="*", )
     dp.register_message_handler(show_schedule,
                                 text=menu_texts.MENU_SCHEDULE_BUTTON_TEXT,
                                 state="*")

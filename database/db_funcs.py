@@ -4,6 +4,7 @@ import string
 from typing import Union
 import datetime as dt
 from fuzzywuzzy import fuzz
+from texts import menu_texts
 
 import constants
 from middleware import texts
@@ -29,17 +30,17 @@ class DataBase:
                      commit=True)
 
         self.execute("""CREATE TABLE IF NOT EXISTS events (
-                            id   INTEGER PRIMARY KEY AUTOINCREMENT,
-                            name TEXT NOT NULL,
-                            reward INTEGER NOT NULL,
-                            description TEXT,
-                            datetime TEXT NOT NULL, 
-                            img_path TEXT,
-                            img_id TEXT,
-                            button_text TEXT,
-                            button_url TEXT,
-                            release INTEGER DEFAULT 0                        
-                        );
+                            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name         TEXT    NOT NULL,
+                            reward       INTEGER NOT NULL,
+                            description  TEXT,
+                            num INTEGER,
+                            button1_text TEXT,
+                            button1_url  TEXT,
+                            button2_text TEXT,
+                            button2_url  TEXT,
+                            release    INTEGER DEFAULT 0
+                            );
                         """,
                      commit=True
                      )
@@ -88,8 +89,12 @@ class DataBase:
                         content TEXT);
                         """, commit=True)
         self.execute("""INSERT INTO texts (name, content) VALUES 
-                        ("help",  "На неделе профкома...")
-                        ON CONFLICT DO NOTHING""", commit=True)
+                        ("help",  ?)
+                        ON CONFLICT DO NOTHING""", menu_texts.HELP_TEXT, commit=True)
+
+        self.execute("""INSERT INTO texts (name, content) VALUES 
+                                ("schedule_text",  ?)
+                                ON CONFLICT DO NOTHING""", menu_texts.SCHEDULE_TEXT, commit=True)
 
         self.execute("""CREATE TABLE IF NOT EXISTS promo(
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -143,43 +148,32 @@ class DataBase:
         if fetch:
             return data
 
-    def add_event(self, name, datetime, reward, description=None, img_path=None, img_id=None):
-        self.execute("INSERT INTO events (name, description, reward, datetime, img_path, img_id)"
-                     "VALUES (?, ?, ?, ?, ?, ?)",
-                     name,
-                     description,
-                     reward,
-                     dt.datetime.strftime(datetime,
-                                          texts.DATE_TIME_TEMPLATE),
-                     img_path,
-                     img_id,
-                     commit=True)
-
     def get_events_summary(self, show_all=False):
         if show_all:
-            res = self.execute("SELECT id, name, datetime FROM events", fetch=True)
+            res = self.execute("SELECT id, name, num FROM events", fetch=True)
         else:
-            res = self.execute("SELECT id, name, datetime  FROM events WHERE release = 1", fetch=True)
+            res = self.execute("SELECT id, name, num  FROM events WHERE release = 1", fetch=True)
         # Меняем строковую дату на datetime
-        return list(map(lambda x: (x[0], x[1], dt.datetime.strptime(x[2], texts.DATE_TIME_TEMPLATE)), res))
+        return res
 
     def get_event(self, event_id) -> Union[dict, None]:
-        res = self.execute("SELECT name, datetime, description, img_path, img_id, release, button_text, button_url  "
+        res = self.execute("SELECT name, description, num, button1_text, button1_url, "
+                           "button2_text, button2_url "
                            "FROM events "
                            "WHERE id = ?",
                            event_id,
                            fetch="one")
         if not res:
             return None
-        name, datetime, description, img_path, img_id, release, button_text, button_url = res
+        name, description, order, button1_text, button1_url, button2_text, button2_url = res
         return {
             "name": name,
-            "datetime": dt.datetime.strptime(datetime, texts.DATE_TIME_TEMPLATE),
+            "order": order,
             "description": description,
-            "img_path": img_path,
-            "img_id": img_id,
-            "button_text": button_text,
-            "button_url": button_url
+            "button1_text": button1_text,
+            "button1_url": button1_url,
+            "button2_text": button2_text,
+            "button2_url": button2_url,
         }
 
     def in_blacklist(self, tg_id):
@@ -193,6 +187,9 @@ class DataBase:
         if not data:
             return 0
         return data[0]
+
+    def get_schedule_text(self):
+        return self.execute("SELECT content FROM texts WHERE name = 'schedule_text'", fetch="one")[0]
 
     def add_user(self, tg_id, username, fullname, tuc=0):
         self.add_transaction(constants.TransactionTypes.USER_REGISTER.value,
@@ -398,7 +395,7 @@ class DataBase:
         if not data:
             return None
         maxim = max(data, key=lambda x:
-            dt.datetime.strptime(x[3], constants.LOG_DATETIME_FORMAT).astimezone(tz=constants.TZ))
+        dt.datetime.strptime(x[3], constants.LOG_DATETIME_FORMAT).astimezone(tz=constants.TZ))
         return dt.datetime.strptime(maxim[3], constants.LOG_DATETIME_FORMAT).astimezone(tz=constants.TZ)
 
     def get_last_support_request_time(self, tg_id):
