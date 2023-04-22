@@ -84,14 +84,14 @@ def get_events_for(tg_id):
 
 async def edit_show_schedule(callback: CallbackQuery, state: FSMContext):
     events = get_events_for(callback.from_user.id)
-    await callback.message.edit_text(menu_texts.get_schedule_text(events),
+    await callback.message.edit_text(db.get_schedule_text(),
                                      parse_mode=ParseMode.HTML,
                                      reply_markup=menu_markups.get_schedule_markup(events))
 
 
 async def show_schedule(message: types.Message, state: FSMContext):
     events = get_events_for(message.from_user.id)
-    await message.answer(menu_texts.get_schedule_text(events),
+    await message.answer(db.get_schedule_text(),
                          parse_mode=ParseMode.HTML,
                          reply_markup=menu_markups.get_schedule_markup(events))
 
@@ -107,16 +107,16 @@ async def show_event(callback: CallbackQuery, state: FSMContext, callback_data: 
                                      )
 
 
-# async def show_help(message: types.Message, state: FSMContext):
-#     await message.answer(db.get_help_text(),
-#                          reply_markup=menu_markups.help_markup,
-#                          parse_mode=ParseMode.HTML)
+async def show_help(message: types.Message, state: FSMContext):
+    await message.answer(db.get_help_text(),
+                         reply_markup=menu_markups.help_markup,
+                         parse_mode=ParseMode.HTML)
 
 
 async def support_input(message: types.Message, state: FSMContext):
     await message.answer(menu_texts.HELP_INPUT_REQUEST,
                          reply_markup=ReplyKeyboardMarkup(
-                             resize_keyboard=True, one_time_keyboard=True
+                             resize_keyboard=True
                          ).add(menu_markups.CANCEL_BUTTON)
                          )
     await menu_fsm.SupportState.input_wait.set()
@@ -132,13 +132,14 @@ async def support_sent(message: types.Message, state: FSMContext):
     user = message.from_user
     support_request_sent = db.get_last_support_request_time(user.id)
     now = dt.datetime.now(tz=constants.TZ)
-    if support_request_sent and  now < support_request_sent + constants.SUPPORT_TIMEDELTA:
+    if support_request_sent and now < support_request_sent + constants.SUPPORT_TIMEDELTA:
         ans_text = menu_texts.TOO_FREQUENTLY_TEMPLATE.format(constants.SUPPORT_TIMEDELTA_ACCUSATIVE_STR)
         await message.answer(ans_text,
                              reply_markup=menu_markups.menu_markup)
     else:
         await bot.send_message(chat_id=config.support_chat_id,
-                               text=menu_texts.TO_SUPPORT_MESSAGE_TEMPLATE.format(user.username, user.url, message.text))
+                               text=menu_texts.TO_SUPPORT_MESSAGE_TEMPLATE.format(user.username, user.url,
+                                                                                  message.text))
         await message.answer(menu_texts.HELP_MESSAGE_SENT,
                              reply_markup=menu_markups.menu_markup)
         db.add_transaction(constants.TransactionTypes.SUPPORT_REQUEST.value,
@@ -148,8 +149,7 @@ async def support_sent(message: types.Message, state: FSMContext):
 
 async def promo_respond(message: types.Message, state: FSMContext):
     await message.answer(menu_texts.PROMO_INPUT_REQUEST,
-                         reply_markup=ReplyKeyboardMarkup(resize_keyboard=True,
-                                                          one_time_keyboard=True).add(menu_markups.CANCEL_BUTTON))
+                         reply_markup=ReplyKeyboardMarkup(resize_keyboard=True).add(menu_markups.CANCEL_BUTTON))
     await menu_fsm.PromoState.input_wait.set()
 
 
@@ -166,8 +166,7 @@ async def promo_input(message: types.Message, state: FSMContext):
         await state.finish()
     else:
         await message.answer(menu_texts.PROMO_DOESNT_EXISTS,
-                             reply_markup=ReplyKeyboardMarkup(resize_keyboard=True,
-                                                              one_time_keyboard=True).add(menu_markups.CANCEL_BUTTON)
+                             reply_markup=ReplyKeyboardMarkup(resize_keyboard=True).add(menu_markups.CANCEL_BUTTON)
                              )
 
 
@@ -186,10 +185,10 @@ def register_menu_handlers():
     dp.register_message_handler(show_profile,
                                 text=menu_texts.MENU_PROFILE_BUTTON_TEXT,
                                 state="*", )
-    # dp.register_message_handler(show_help,
+    dp.register_message_handler(show_help,
 
-    #                             text=menu_texts.MENU_HELP_BUTTON_TEXT,
-    #                             state="*", )
+                                text=menu_texts.MENU_HELP_BUTTON_TEXT,
+                                state="*", )
     dp.register_message_handler(show_schedule,
                                 text=menu_texts.MENU_SCHEDULE_BUTTON_TEXT,
                                 state="*")
