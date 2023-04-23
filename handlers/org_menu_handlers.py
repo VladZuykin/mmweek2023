@@ -11,7 +11,6 @@ from texts import org_menu_texts, org_promo_texts
 from functions import org_menu_functions
 
 
-@admins.check(level=1)
 async def send_menu_on_update(update: Union[Message, CallbackQuery], state: Union[FSMContext, None]):
     if isinstance(update, CallbackQuery):
         message = update.message
