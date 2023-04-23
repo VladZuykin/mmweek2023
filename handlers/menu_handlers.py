@@ -75,10 +75,7 @@ async def show_profile(message: types.Message, state: FSMContext):
 
 
 def get_events_for(tg_id):
-    if db.get_admin_level(tg_id) > 0:
-        events = db.get_events_summary(True)
-    else:
-        events = db.get_events_summary(False)
+    events = db.get_events_summary(False)
     return events
 
 

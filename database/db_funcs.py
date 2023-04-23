@@ -45,11 +45,13 @@ class DataBase:
                      commit=True
                      )
         self.execute("""CREATE TABLE IF NOT EXISTS admins (
-                            tg_id    INTEGER NOT NULL
-                                             PRIMARY KEY,
+                            id       INTEGER PRIMARY KEY AUTOINCREMENT
+                                             NOT NULL,
+                            tg_id    INTEGER NOT NULL,
                             level    INTEGER,
                             event_id INTEGER
-                            );""",
+                        );
+                        """,
                      commit=True)
 
         self.execute("""CREATE TABLE IF NOT EXISTS stuff (
