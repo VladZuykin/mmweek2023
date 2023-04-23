@@ -106,7 +106,7 @@ async def period_promo(message: Message, state: FSMContext):
     name = data['promo_code']
     money = data['num_points']
     can_use = data['num_uses']
-    db.add_promo(name, money, can_use, time_registered, time_ends)
+    db.add_promo(name, money, can_use, time_registered, time_ends, message.from_user.id)
     await message.answer(org_promo_texts.PROMO_ADDED_TEMPLATE.format(name, money)
                          + org_menu_functions.get_promo_added_text(can_use, period_time, period_type),
                          parse_mode=ParseMode.HTML)

@@ -4,7 +4,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.types import CallbackQuery, Message, ParseMode
 
 from org_bot_create import dp, db
-from handlers import org_scaner_handlers, org_promo_handlers
+from handlers import org_scaner_handlers, org_promo_handlers, org_give_admin_handlers
 from markups import org_menu_markups
 from middleware import admins
 from texts import org_menu_texts, org_promo_texts
@@ -42,3 +42,4 @@ def register_org_menu_handlers():
                                 text=org_menu_texts.MENU_LIST_PROMO_BUTTON_TEXT)
     org_scaner_handlers.register_org_scaner_handlers()
     org_promo_handlers.register_org_promo_handlers()
+    org_give_admin_handlers.register_org_promo_handlers()

@@ -90,32 +90,6 @@ Campus Fest, ПУНК СПбГУ
 18:00 – Дискотека. Наб. Обводного канала, 136"""
 
 
-# def get_schedule_text(events_summary):  # events_summary - список [(id, name, datetime), (...), ..., (...)]
-#     if not events_summary:
-#         return NO_SCHEDULE_TEXT
-#     # Сортировка по дням
-#     schedule_dict = {}
-#     for event in events_summary:
-#         date = event[2].date()
-#         if date not in schedule_dict:
-#             schedule_dict[date] = [event]
-#         else:
-#             schedule_dict[date].append(event)
-#
-#     sorted_schedule_dict = collections.OrderedDict(sorted(schedule_dict.items()))
-#     text = ""
-#     for key in sorted_schedule_dict:
-#         text += f"<b>{menu_functions.get_weekday_str(key).capitalize()}</b>\n"
-#         # Сортировка по часам
-#         events = sorted_schedule_dict[key]
-#         events.sort(key=lambda x: x[2])
-#         for event in events:
-#             time = dt.datetime.strftime(event[2], "%H:%M")
-#             name = event[1]
-#             text += f"{time} {name}\n"
-#         text += "\n"
-#     return SCHEDULE_TEMPLATE.format(text)
-
 def get_event_text(event: dict):
     if not event:
         return EVENT_NOT_FOUND_TEXT

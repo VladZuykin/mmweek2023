@@ -10,10 +10,10 @@ SCAN_CODE_TEXT = "Введи код участника или нажми \"" + o
                  "\", чтобы вернуться в меню"
 
 NO_PARTICIPANT_TEXT = "Такого участника нет в базе, он не зарегистрирован:("
-MONEY_GIVEN_ALREADY_TEMPLATE = "Участнику {} уже начислены баллы"
-GIVE_MONEY_TEMPLATE = "Участник: {}. Начислить {}i?"
-MONEY_GIVEN_TEMPLATE = "Начислено {}i участнику {}"
-NOT_MONEY_GIVEN_TEMPLATE = "Участнику {} код не просканирован"
+MONEY_GIVEN_ALREADY_TEMPLATE = "Участнику <u>{}</u> уже начислены баллы"
+GIVE_MONEY_TEMPLATE = "Участник: <u>{}</u>. Начислить {}i?"
+MONEY_GIVEN_TEMPLATE = "Начислено {}i участнику <u>{}</u>"
+NOT_MONEY_GIVEN_TEMPLATE = "Участнику <u>{}</u> код не просканирован"
 
 COERCE_BACK_TO_MENU_TEXT = "Пожалуйста, закончи с вопросом выше о начислении баллов"
 

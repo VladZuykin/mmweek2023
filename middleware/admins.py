@@ -4,7 +4,7 @@ from aiogram.dispatcher.middlewares import BaseMiddleware
 from database.db_funcs import DataBase
 
 
-def check(level: int = 1):
+def check(level):
     """
     Декоратор для того, чтобы пользователя проверили на админку
     :return:
@@ -62,7 +62,6 @@ class AdminMalware(BaseMiddleware):
         if not admin_check or not admin_level_check:
             return True
 
-        user_admin_level = self.db.get_admin_level(tg_id)
-        if user_admin_level < admin_level_check:
-            return False
-        return True
+        if self.db.have_admin_rights(tg_id, admin_level_check):
+            return True
+        return False

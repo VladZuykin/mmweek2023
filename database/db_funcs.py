@@ -182,11 +182,11 @@ class DataBase:
             return False
         return True
 
-    def get_admin_level(self, tg_id):
-        data = self.execute("SELECT level FROM admins WHERE tg_id = ?", tg_id, fetch="one")
-        if not data:
-            return 0
-        return data[0]
+    def have_admin_rights(self, tg_id, level):
+        data = self.execute("SELECT tg_id FROM admins WHERE tg_id = ? and level = ?", tg_id, level, fetch="ONE")
+        if data:
+            return True
+        return False
 
     def get_schedule_text(self):
         return self.execute("SELECT content FROM texts WHERE name = 'schedule_text'", fetch="one")[0]
@@ -225,6 +225,14 @@ class DataBase:
         :return:
         """
         return self.execute("SELECT " + what + " FROM users WHERE tg_id = ?", tg_id, fetch="ONE")
+
+    def get_user_id_by_username(self, username):
+        if username.startswith("@"):
+            username = username[1:]
+        tg_id = self.execute("SELECT tg_id FROM users WHERE username LIKE ?", username, fetch="ONE")
+        if not tg_id:
+            return None
+        return tg_id[0]
 
     def get_fullname(self, tg_id):
         res = self.get_user_info(tg_id, "fullname")
@@ -305,7 +313,7 @@ class DataBase:
         if promo_id:
             dt_ends = dt.datetime.strptime(time_ends, constants.DATETIME_FORMAT).astimezone(constants.TZ)
             if dt.datetime.now(constants.TZ) <= dt_ends:
-                if used < can_use:
+                if used < can_use or can_use == -1:
                     used_user = self.execute("SELECT promo_id FROM promo_usages WHERE promo_id = ? and tg_id = ?",
                                              promo_id,
                                              tg_id, fetch="one")

@@ -1,6 +1,7 @@
-from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove, ParseMode
 from aiogram.dispatcher import FSMContext
 
+import constants
 from callbacks import org_menu_callbacks
 from markups import org_menu_markups
 from texts import org_scaner_texts, org_menu_texts
@@ -11,7 +12,7 @@ from fsm.org_menu_fsm import ScanerState
 
 @admins.check(level=1)
 async def input_code(message: Message, state: FSMContext):
-    event_id = db.get_event_id(message.from_user.id)
+    event_id = db.get_event_by_tg_id(message.from_user.id)
     event_name = db.get_event_name(event_id)
     if not event_name:
         await message.answer(org_scaner_texts.NO_EVENT_ERROR_TEXT)
@@ -27,28 +28,31 @@ async def scan_code(message: Message, state: FSMContext):
     enter_code = message.text
     if enter_code.casefold() == org_menu_texts.BACK_TO_MENU_BUTTON_TEXT.casefold():
         await message.answer(org_menu_texts.BACK_TO_MENU_TEXT,
-                             reply_markup=org_menu_markups.org_menu_markup)
+                             reply_markup=org_menu_markups.org_menu_markup,
+                             parse_mode=ParseMode.HTML)
         await state.finish()
         return
-
     participant_id = db.get_id_with_code(enter_code)
     if not participant_id:
-        await message.answer(org_scaner_texts.NO_PARTICIPANT_TEXT)
-        await message.answer(org_scaner_texts.SCAN_CODE_TEXT)
+        await message.answer(org_scaner_texts.NO_PARTICIPANT_TEXT,
+                             parse_mode=ParseMode.HTML)
+        await message.answer(org_scaner_texts.SCAN_CODE_TEXT,
+                             parse_mode=ParseMode.HTML)
         return
-
-    event_id = db.get_event_id(message.from_user.id)
+    event_id = db.get_event_by_tg_id(message.from_user.id)
     participant_name = db.get_fullname(participant_id)
     part_visits = db.get_events_visited(participant_id)  # part_visits - все мероприятия, посещенные этим участником
     if part_visits and (event_id in part_visits):
-        await message.answer(org_scaner_texts.MONEY_GIVEN_ALREADY_TEMPLATE.format(participant_name))
-        await message.answer(org_scaner_texts.SCAN_CODE_TEXT)
+        await message.answer(org_scaner_texts.MONEY_GIVEN_ALREADY_TEMPLATE.format(participant_name),
+                             parse_mode=ParseMode.HTML)
+        await message.answer(org_scaner_texts.SCAN_CODE_TEXT,
+                             parse_mode=ParseMode.HTML)
         return
-
     money_value = db.get_event_reward(event_id)
 
     await message.answer(org_scaner_texts.GIVE_MONEY_TEMPLATE.format(participant_name, money_value),
-                         reply_markup=org_menu_markups.yes_no_markup)
+                         reply_markup=org_menu_markups.yes_no_markup,
+                         parse_mode=ParseMode.HTML)
     await state.update_data({"participant_id": participant_id,
                              "participant_name": participant_name,
                              "event_id": event_id,
@@ -63,29 +67,44 @@ async def give_money(callback_query: CallbackQuery, state: FSMContext):
     name = data["participant_name"]
     event_id = data["event_id"]
     money_value = data["money_value"]
-    db.update_event_visits(tg_id, event_id)
-    db.add_money(tg_id, money_value)
+    db.update_event_visits(tg_id, event_id, callback_query.from_user.id)
+    event_name = db.get_event_name(event_id)
+    db.add_money(tg_id, money_value, f"scanned event: {event_name} scanned by {callback_query.from_user.id} "
+                                     f"got money: {money_value}")
     await callback_query.message.edit_text(org_scaner_texts.MONEY_GIVEN_TEMPLATE.format(money_value, name),
-                                           reply_markup=None)
+                                           reply_markup=None,
+                                           parse_mode=ParseMode.HTML)
     await callback_query.message.answer(org_scaner_texts.SCAN_CODE_TEXT,
-                                        reply_markup=org_menu_markups.back_to_menu_markup)
+                                        reply_markup=org_menu_markups.back_to_menu_markup,
+                                        parse_mode=ParseMode.HTML)
     await ScanerState.scan.set()
 
 
 @admins.check(level=1)
 async def give_not_money(callback_query: CallbackQuery, state: FSMContext):
     data = await state.get_data()
+    tg_id = data["participant_id"]
     name = data["participant_name"]
+    event_id = data["event_id"]
+    event_name = db.get_event_name(event_id)
+    money_value = data["money_value"]
+    name = data["participant_name"]
+    db.add_transaction(constants.TransactionTypes.ENTER.value,
+                       tg_id, None, f"scanned event: {event_name} scanned by {callback_query.from_user.id} "
+                                    f"haven't got money")
     await callback_query.message.edit_text(org_scaner_texts.NOT_MONEY_GIVEN_TEMPLATE.format(name),
-                                           reply_markup=None)
+                                           reply_markup=None,
+                                           parse_mode=ParseMode.HTML)
     await callback_query.message.answer(org_scaner_texts.SCAN_CODE_TEXT,
-                                        reply_markup=org_menu_markups.back_to_menu_markup)
+                                        reply_markup=org_menu_markups.back_to_menu_markup,
+                                        parse_mode=ParseMode.HTML)
     await ScanerState.scan.set()
 
 
 @admins.check(level=1)
 async def coerce_back_to_menu(message: Message, state: FSMContext):
-    await message.answer(org_scaner_texts.COERCE_BACK_TO_MENU_TEXT, reply_markup=ReplyKeyboardRemove())
+    await message.answer(org_scaner_texts.COERCE_BACK_TO_MENU_TEXT, reply_markup=ReplyKeyboardRemove(),
+                         parse_mode=ParseMode.HTML)
 
 
 def register_org_scaner_handlers():

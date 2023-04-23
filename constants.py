@@ -19,6 +19,11 @@ class TransactionTypes(Enum):
     USER_REGISTER = "user_register"
     SUPPORT_REQUEST = "support_request"  # Запрос в тех. поддержку
     PROMO_USAGE = "promo_usage"
+    PROMO_CREATE = "create_promo"
     SET_TUC = "set_tuc"  # Установка tuc
     CODE_GENERATE = "code_generate"
     MONEY_GET = "money_get"
+    ADMIN_GAVE = "admin_gave"
+    ENTER = "enter"
+
+

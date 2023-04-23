@@ -6,9 +6,9 @@ INFINITE_USES_BUTTON_TEXT = "Не ограничено"
 
 
 # Тексты сообщений
-HOW_CREATE_PROMO_TEXT = "Введи, как ты хочешь, чтобы промокод выглядел, или нажми \"" \
+HOW_CREATE_PROMO_TEXT = "Введи промокод или нажми \"" \
                         + RANDOM_PROMO_BUTTON_TEXT + "\", чтобы сгенерировать автоматически. \n\n" \
-                        "Ты можешь в любой момент нажать \"" + org_menu_texts.BACK_TO_MENU_BUTTON_TEXT + \
+                        "Нажми \"" + org_menu_texts.BACK_TO_MENU_BUTTON_TEXT + \
                         "\", чтобы вернуться в меню"
 PROMO_ALREADY_EXISTS_TEXT = "Такой промокод уже существует. \n" \
                             "Пожалуйста, введи другой или нажми \"" + RANDOM_PROMO_BUTTON_TEXT + "\""
