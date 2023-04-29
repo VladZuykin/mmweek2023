@@ -6,3 +6,8 @@ class SupportState(StatesGroup):
 
 class PromoState(StatesGroup):
     input_wait = State()
+
+class LetteringState(StatesGroup):
+    get_text = State()
+    lettering_confirmation = State()
+

@@ -8,7 +8,9 @@ org_menu_markup.add(org_menu_texts.MENU_SCANER_BUTTON_TEXT)
 org_menu_markup.add(org_menu_texts.MENU_MERCH_BUTTON_TEXT)
 org_menu_markup.add(org_menu_texts.MENU_CREATE_PROMO_BUTTON_TEXT,
                     org_menu_texts.MENU_LIST_PROMO_BUTTON_TEXT)
-org_menu_markup.add(org_menu_texts.MENU_GIVE_ACCESS_BUTTON_TEXT)
+org_menu_markup.add(org_menu_texts.MENU_TAKE_AWAY_ACCESS_BUTTON_TEXT)
+org_menu_markup.insert(org_menu_texts.MENU_ADMINS_LIST_BUTTON_TEXT)
+org_menu_markup.insert(org_menu_texts.MENU_GIVE_ACCESS_BUTTON_TEXT)
 
 
 back_to_menu_markup = ReplyKeyboardMarkup(resize_keyboard=True)

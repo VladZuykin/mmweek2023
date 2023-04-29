@@ -4,10 +4,8 @@ import string
 from typing import Union
 import datetime as dt
 from fuzzywuzzy import fuzz
-from texts import menu_texts
 
 import constants
-from middleware import texts
 
 
 class DataBase:
@@ -34,16 +32,17 @@ class DataBase:
                             name         TEXT    NOT NULL,
                             reward       INTEGER NOT NULL,
                             description  TEXT,
-                            num INTEGER,
+                            num          INTEGER,
                             button1_text TEXT,
                             button1_url  TEXT,
                             button2_text TEXT,
                             button2_url  TEXT,
-                            release    INTEGER DEFAULT 0
+                            [release]    INTEGER DEFAULT 0
                             );
                         """,
                      commit=True
                      )
+        # 3 Уровня: Сила-персила, Галя и Владелец
         self.execute("""CREATE TABLE IF NOT EXISTS admins (
                             id       INTEGER PRIMARY KEY AUTOINCREMENT
                                              NOT NULL,
@@ -55,29 +54,40 @@ class DataBase:
                      commit=True)
 
         self.execute("""CREATE TABLE IF NOT EXISTS stuff (
-                            id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                            name          TEXT,
-                            description   TEXT,
-                            not_tuc_price INTEGER,
-                            tuc_price     INTEGER,
-                            img_path      TEXT,
-                            count         INTEGER NOT NULL
+                                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                                stuff_category_id INTEGER REFERENCES stuff_categories (id),
+                                name              TEXT,
+                                description       TEXT,
+                                not_tuc_price     INTEGER,
+                                tuc_price         INTEGER,
+                                img_path          TEXT,
+                                count             INTEGER,
+                                show              INTEGER DEFAULT (1) 
                             );""",
                      commit=True)
 
+        self.execute("""CREATE TABLE IF NOT EXISTS stuff_categories (
+                                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                                    name        TEXT,
+                                    description TEXT,
+                                    img_path    TEXT
+                                );
+                                """, commit=True)
+
         self.execute("""CREATE TABLE IF NOT EXISTS purchases (
-                            id       INTEGER PRIMARY KEY AUTOINCREMENT,
-                            tg_id    INTEGER NOT NULL
-                                             REFERENCES users (tg_id),
-                            stuff_id INTEGER NOT NULL
-                                             REFERENCES stuff (id),
-                            count    INTEGER NOT NULL,
-                            cost     INTEGER NOT NULL,
+                            id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+                            tg_id                 INTEGER NOT NULL
+                                                          REFERENCES users (tg_id),
+                            stuff_id              INTEGER REFERENCES stuff (id),
+                            stuff_sizes_colors_id INTEGER REFERENCES stuff_sizes_colors (id),
+                            count                 INTEGER NOT NULL,
                             UNIQUE (
                                 tg_id,
-                                stuff_id
+                                stuff_id,
+                                stuff_sizes_colors_id
                             )
-                        );""",
+                        );
+""",
                      commit=True)
 
         self.execute("""CREATE TABLE IF NOT EXISTS tuc_list (
@@ -90,13 +100,6 @@ class DataBase:
                         name TEXT UNIQUE,
                         content TEXT);
                         """, commit=True)
-        self.execute("""INSERT INTO texts (name, content) VALUES 
-                        ("help",  ?)
-                        ON CONFLICT DO NOTHING""", menu_texts.HELP_TEXT, commit=True)
-
-        self.execute("""INSERT INTO texts (name, content) VALUES 
-                                ("schedule_text",  ?)
-                                ON CONFLICT DO NOTHING""", menu_texts.SCHEDULE_TEXT, commit=True)
 
         self.execute("""CREATE TABLE IF NOT EXISTS promo(
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -123,6 +126,19 @@ class DataBase:
                                 datetime TEXT,
                                 data TEXT);
                                 """, commit=True)
+        self.execute("""CREATE TABLE IF NOT EXISTS stuff_sizes_colors (
+                            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                            stuff_id INTEGER REFERENCES stuff (id),
+                            size     TEXT,
+                            color    TEXT,
+                            count    INTEGER NOT NULL
+                        );
+                        """, commit=True)
+        self.execute("""CREATE TABLE IF NOT EXISTS img_cache (
+                        id     INTEGER PRIMARY KEY AUTOINCREMENT,
+                        path   TEXT    UNIQUE,
+                        img_id TEXT
+                    )""", commit=True)
 
     def execute(self, clause: str, *args, commit: bool = False, fetch: Union[bool, str] = False) -> Union[list, None]:
         """
@@ -183,6 +199,181 @@ class DataBase:
         if not data:
             return False
         return True
+
+    def in_tuc(self, tg_id):
+        data = self.execute("SELECT tuc FROM users WHERE tg_id = ?", tg_id, fetch="one")
+        if not data or not data[0] or data[0] == 2:
+            return False
+        return True
+
+    def is_color_size_stuff(self, stuff_id):
+        data = self.execute("SELECT count FROM stuff WHERE id = ?", stuff_id, fetch="one")
+        if not data:
+            raise ValueError("Bad stuff id.")
+        if data[0] is None:
+            return True
+        return False
+
+    def get_purchases_num_by_stuff_id(self, stuff_id):  # Для вещей без укзания размера/цвета
+        data = self.execute("SELECT count FROM purchases WHERE stuff_id = ?", stuff_id, fetch=True)
+        res = 0
+        for count, in data:
+            res += count
+        return res
+
+    def get_category_img_path(self, category_id):
+        data = self.execute("SELECT img_path FROM stuff_categories WHERE id = ?", category_id, fetch="one")
+        if not data or not data[0]:
+            return None
+        return data[0]
+
+    def get_category_description(self, category_id):
+        data = self.execute("SELECT description FROM stuff_categories WHERE id = ?", category_id, fetch="one")
+        if not data or not data[0]:
+            return ""
+        return data[0]
+
+    def get_stuff_img_path(self, stuff_id):
+        data = self.execute("SELECT img_path FROM stuff WHERE id = ?", stuff_id, fetch="one")
+        if not data or not data[0]:
+            return None
+        return data[0]
+
+    def how_many_stuff_booked(self, tg_id, stuff_id):
+        data = self.execute("SELECT count FROM purchases WHERE tg_id = ? and stuff_id = ?",
+                            tg_id, stuff_id, fetch="ALL")
+        res = 0
+        for count, in data:
+            res += count
+        return res
+
+    def how_many_sizes_colors_booked(self, tg_id, stuff_sizes_colors_id):
+        data = self.execute("SELECT count FROM purchases WHERE tg_id = ? and stuff_sizes_colors_id = ?",
+                            tg_id, stuff_sizes_colors_id, fetch="ALL")
+        res = 0
+        for count, in data:
+            res += count
+        return res
+
+    def booked_list(self, tg_id):
+        data = self.execute("SELECT stuff_id, stuff_sizes_colors_id, count "
+                            "FROM purchases WHERE tg_id = ?",
+                            tg_id, fetch="ALL")
+        res = []
+        for stuff_id, stuff_sizes_colors_id, count in data:
+            name, = self.get_stuff_info(stuff_id, "name")
+            if stuff_sizes_colors_id is not None:
+                color, size = self.get_stuff_sizes_colors_texts_info(stuff_sizes_colors_id, "color, size")
+            else:
+                color, size = None, None
+            res.append((stuff_id, stuff_sizes_colors_id, name, color, size, count))
+        return res
+
+    def get_stuff_count_num_by_stuff_id(self, stuff_id):
+        """
+        Подсчитывает количество на складе любой вещи
+        :param stuff_id:
+        :return:
+        """
+        data = self.execute("SELECT count FROM stuff WHERE id = ?", stuff_id, fetch="one")
+        if not data:
+            return None
+        if data[0] is not None:
+            return data[0]
+        data = self.execute("SELECT count FROM stuff_sizes_colors WHERE stuff_id = ?", stuff_id, fetch=True)
+        res = 0
+        for count, in data:
+            res += count
+        return res
+
+    def get_purchases_num_by_sizes_colors_id(self, stuff_sizes_colors_id):  # Для определённого цвета/размера вещи
+        data = self.execute("SELECT count FROM purchases WHERE stuff_sizes_colors_id = ?", stuff_sizes_colors_id,
+                            fetch=True)
+        res = 0
+        for count, in data:
+            res += count
+        return res
+
+    def get_all_color_size_combinations(self, stuff_id):
+        """
+        Возвращает [(color_size_id, color, size, count),...]
+        :param stuff_id:
+        :return:
+        """
+        stuff = self.execute(
+            "SELECT id, color, size, count FROM stuff_sizes_colors WHERE stuff_id = ?",
+            stuff_id,
+            fetch=True)
+        res = []
+        for size_color_id, color, size, count in stuff:
+            if count > 0:
+                res.append((size_color_id, color, size, count))
+        return res
+
+    def get_all_colors_by_stuff_id(self, stuff_id):
+        """
+        Возвращает [(colors_sizes_id, color) for colors_sizes_id, color in ...]
+        :param stuff_id:
+        :return:
+        """
+        res = []
+        colors = self.execute(
+            "SELECT id, color, count FROM stuff_sizes_colors WHERE stuff_id = ? and color IS NOT NULL",
+            stuff_id,
+            fetch=True)
+        for colors_sizes_id, color, count in colors:
+            if count > 0:
+                res.append((colors_sizes_id, color))
+        return res
+
+    def get_all_sizes_by_stuff_id(self, stuff_id):
+        """
+        Возвращает [(colors_sizes_id, size) for colors_sizes_id, size in ...]
+        :param stuff_id:
+        :return:
+        """
+        res = []
+        sizes = self.execute(
+            "SELECT id, size, count FROM stuff_sizes_colors WHERE stuff_id = ? and size IS NOT NULL",
+            stuff_id,
+            fetch=True)
+        for colors_sizes_id, size, count in sizes:
+            if count > 0:
+                res.append((colors_sizes_id, size))
+        return res
+
+    def get_stuff_sizes_colors(self, sizes_colors_id, what: str):
+        data = self.execute("SELECT " + what + " FROM stuff_sizes_colors WHERE id = ?", sizes_colors_id,
+                            fetch="one")
+        return data
+
+    def get_stuff_categories(self):
+        data = self.execute("SELECT id, name FROM stuff_categories", fetch=True)
+        return data
+
+    def get_user_money(self, tg_id):
+        data = self.get_user_info(tg_id, "money")
+        if not data:
+            return None
+        return data[0]
+
+    def get_stuff_sizes_colors_texts_info(self, colors_sizes_id, what: str):
+        data = self.execute("SELECT " + what + " FROM stuff_sizes_colors WHERE id = ?",
+                            colors_sizes_id, fetch="one")
+        return data
+
+    def get_stuff_category_info(self, stuff_category_id, what: str):
+        return self.execute("SELECT " + what + " FROM stuff_categories WHERE id = ?", stuff_category_id, fetch="one")
+
+    def get_stuff_info(self, stuff_id, what: str):
+        return self.execute("SELECT " + what + " FROM stuff WHERE id = ?", stuff_id, fetch="one")
+
+    def get_user_info_by_code(self, code: str, what: str):
+        return self.execute("SELECT " + what + " FROM users WHERE enter_code = ?", code, fetch="one")
+
+    def get_stuff_by_category_id(self, stuff_category_id, what: str):
+        data = self.execute("SELECT " + what + " FROM stuff WHERE stuff_category_id = ?", stuff_category_id, fetch=True)
+        return data
 
     def have_admin_rights(self, tg_id, level):
         data = self.execute("SELECT tg_id FROM admins WHERE tg_id = ? and level = ?", tg_id, level, fetch="ONE")
@@ -321,7 +512,6 @@ class DataBase:
                                              tg_id, fetch="one")
                     if not used_user:
                         cur = self.con.cursor()
-                        cur.execute("BEGIN TRANSACTION;")
                         fail = False
                         try:
                             cur.execute("INSERT INTO promo_usages (promo_id, tg_id, datetime) VALUES (?, ?, ?);",
@@ -330,14 +520,9 @@ class DataBase:
                                                               constants.DATETIME_FORMAT)))
                             cur.execute("UPDATE promo SET used = used + 1 WHERE id = ?;", (promo_id,)),
                             cur.execute("UPDATE users SET money = money + ? WHERE tg_id = ?;", (money, tg_id))
-
                         except (sqlite3.DatabaseError, sqlite3.InternalError) as e:
                             fail = True
-                        if fail:
-                            cur.execute("ROLLBACK;")
-
-                        else:
-                            cur.execute("END TRANSACTION;")
+                            self.con.rollback()
                         cur.close()
                         if fail:
                             self.add_transaction(constants.TransactionTypes.PROMO_USAGE.value,
@@ -413,6 +598,116 @@ class DataBase:
         if not data:
             return None
         return data
+
+    def get_admin_list(self, level=None):
+        if level is not None:
+            data = self.execute("SELECT tg_id, event_id FROM admins WHERE level = ?", level, fetch=True)
+        else:
+            data = self.execute("SELECT tg_id, event_id FROM admins", fetch=True)
+        res = []
+        for tg_id, event_id in data:
+            username, full_name = self.get_user_info(tg_id, "username, fullname")
+            res.append((tg_id, username, full_name, event_id))
+        return res
+
+        # 1 - недостаточно денег, 2 - мерча уже нет, 3 - ошибка при транзакции
+
+    def buy_size_color_stuff(self, tg_id, sizes_colors_id):
+        stuff_id, count = self.get_stuff_sizes_colors_texts_info(sizes_colors_id, "stuff_id, count")
+        tuc_price, not_tuc_price = self.get_stuff_info(stuff_id, "tuc_price, not_tuc_price")
+        if self.in_tuc(tg_id):
+            price = tuc_price
+        else:
+            price = not_tuc_price
+        user_money = self.get_user_money(tg_id)
+        if user_money < price:
+            self.add_transaction(constants.TransactionTypes.PURCHASE_FAIL.value, tg_id, None,
+                                 f"not enough money, sizes_colors_id = {sizes_colors_id}")
+            return 1
+        elif count <= 0:
+            self.add_transaction(constants.TransactionTypes.PURCHASE_FAIL.value, tg_id, None,
+                                 f"not enough items, sizes_colors_id = {sizes_colors_id}")
+            return 2
+        else:
+            cur = self.con.cursor()
+            fail = False
+            try:
+                cur.execute("UPDATE users SET money = money - ? WHERE tg_id = ?;", (price, tg_id))
+                cur.execute("UPDATE stuff_sizes_colors SET count = count - 1 WHERE id = ?;", (sizes_colors_id,))
+                cur.execute("INSERT INTO purchases (tg_id, stuff_id, stuff_sizes_colors_id, count) "
+                            "VALUES (?, ?, ?, 1) "
+                            "ON CONFLICT (tg_id, stuff_id, stuff_sizes_colors_id) DO UPDATE SET count = count + 1 "
+                            "WHERE tg_id = ? and stuff_id = ? and stuff_sizes_colors_id = ?",
+                            (tg_id, stuff_id, sizes_colors_id, tg_id, stuff_id, sizes_colors_id))
+                # update purchases
+                self.con.commit()
+            except (sqlite3.DatabaseError, sqlite3.InternalError) as e:
+                print(e)
+                self.con.rollback()
+                fail = True
+            cur.close()
+            if fail:
+                self.add_transaction(constants.TransactionTypes.PURCHASE_FAIL.value, tg_id, None,
+                                     f"transaction fail, sizes_colors_id = {sizes_colors_id}")
+                return 3
+            self.add_transaction(constants.TransactionTypes.PURCHASE_SUCCESS.value, tg_id, None,
+                                 f"sizes_colors_id = {sizes_colors_id}")
+            return 0
+
+    # 1 - недостаточно денег, 2 - мерча уже нет, 3 - ошибка при транзакции
+    def buy_no_size_color_stuff(self, tg_id, stuff_id):
+        tuc_price, not_tuc_price, count = self.get_stuff_info(stuff_id, "tuc_price, not_tuc_price, count")
+        if self.in_tuc(tg_id):
+            price = tuc_price
+        else:
+            price = not_tuc_price
+        user_money = self.get_user_money(tg_id)
+        if self.execute("SELECT id FROM purchases WHERE tg_id = ? and stuff_id = ?",
+                        tg_id, stuff_id, fetch="one"):
+            have_purchase = True
+        else:
+            have_purchase = False
+        if user_money < price:
+            self.add_transaction(constants.TransactionTypes.PURCHASE_FAIL.value, tg_id, None,
+                                 f"not enough money, stuff_id = {stuff_id}")
+            return 1
+        elif count <= 0:
+            self.add_transaction(constants.TransactionTypes.PURCHASE_FAIL.value, tg_id, None,
+                                 f"not enough items, stuff_id = {stuff_id}")
+            return 2
+        else:
+            cur = self.con.cursor()
+            fail = False
+            try:
+                cur.execute("UPDATE users SET money = money - ? WHERE tg_id = ?;", (price, tg_id))
+                cur.execute("UPDATE stuff SET count = count - 1 WHERE id = ?;", (stuff_id,))
+                if not have_purchase:
+                    cur.execute("INSERT INTO purchases (tg_id, stuff_id, stuff_sizes_colors_id, count) "
+                                "VALUES (?, ?, NULL, 1) ",
+                                (tg_id, stuff_id))
+                else:
+                    cur.execute("UPDATE purchases SET count = count + 1 "
+                                "WHERE tg_id = ? and stuff_id = ? and stuff_sizes_colors_id is NULL",
+                                (tg_id, stuff_id))
+                self.con.commit()
+            except (sqlite3.DatabaseError, sqlite3.InternalError) as e:
+                print(e)
+                fail = True
+                self.con.rollback()
+            cur.close()
+            if fail:
+                self.add_transaction(constants.TransactionTypes.PURCHASE_FAIL.value, tg_id, None,
+                                     f"transaction fail, stuff_id = {stuff_id}")
+                return 3
+            self.add_transaction(constants.TransactionTypes.PURCHASE_SUCCESS.value, tg_id, None,
+                                 f"stuff_id = {stuff_id}")
+            return 0
+
+    def get_purchases_by_id(self, tg_id, what: str):
+        return self.execute("SELECT " + what + " FROM purchases WHERE tg_id = ?", tg_id, fetch=True)
+
+
+
 
 
 def __del__(self):

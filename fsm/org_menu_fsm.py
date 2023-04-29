@@ -11,3 +11,6 @@ class PromoState(StatesGroup):
     num_points = State()
     num_uses = State()
     period = State()
+
+class TakeOutAccess(StatesGroup):
+    take_access_input = State()

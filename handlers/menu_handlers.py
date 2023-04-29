@@ -10,21 +10,23 @@ import qrcode
 from aiogram import types
 from aiogram.utils.exceptions import MessageCantBeEdited
 from aiogram.dispatcher import FSMContext
-from aiogram.types import ParseMode, ReplyKeyboardRemove, Message, CallbackQuery, ChatActions, ReplyKeyboardMarkup
+from aiogram.types import ParseMode, ReplyKeyboardRemove, Message, CallbackQuery, ChatActions, ReplyKeyboardMarkup, \
+    InlineKeyboardMarkup
 from magic_filter import F
 import datetime as dt
 
+import classes
 import constants
 import middleware.functions
 from fsm import menu_fsm
+from fsm.menu_fsm import LetteringState
 from fsm.registration_fsm import GreetingState
-from functions import menu_functions
 from markups import menu_markups
 from bot_create import bot, dp, config
 from main import db
 from markups.menu_markups import menu_markup
-from middleware import antispam
-from texts import menu_texts, registration_texts
+from middleware import antispam, admins
+from texts import menu_texts
 from callbacks import menu_callbacks
 
 
@@ -66,12 +68,8 @@ async def generate_code(message: types.Message, state: FSMContext):
 
 
 async def show_profile(message: types.Message, state: FSMContext):
-    info = db.get_user_info(message.from_user.id, "fullname, money, tuc")
-    if not info:
-        await message.answer(menu_texts.PROFILE_ERROR)
-        return
-    fullname, money, tuc = info
-    await message.answer(menu_texts.PROFILE_TEMPLATE.format(fullname, money, menu_texts.TUC_TEXTS[tuc]))
+    await message.answer(menu_texts.get_profile_text(db, message.from_user.id),
+                         parse_mode=ParseMode.HTML)
 
 
 def get_events_for(tg_id):
@@ -107,7 +105,8 @@ async def show_event(callback: CallbackQuery, state: FSMContext, callback_data: 
 async def show_help(message: types.Message, state: FSMContext):
     await message.answer(db.get_help_text(),
                          reply_markup=menu_markups.help_markup,
-                         parse_mode=ParseMode.HTML)
+                         parse_mode=ParseMode.HTML,
+                         disable_web_page_preview=True)
 
 
 async def support_input(message: types.Message, state: FSMContext):
@@ -150,11 +149,13 @@ async def promo_respond(message: types.Message, state: FSMContext):
     await menu_fsm.PromoState.input_wait.set()
 
 
+@antispam.set_limits(60, 10, 3600)
 async def promo_input(message: types.Message, state: FSMContext):
     promo = message.text
     error_code = db.use_promo(message.from_user.id, promo)
     if error_code == 0:
-        await message.answer(menu_texts.PROMO_SUCCESSFULLY_ACTIVATED_TEXT,
+        money_got, = db.execute("SELECT money FROM promo WHERE name = ?", promo, fetch="one")
+        await message.answer(menu_texts.PROMO_SUCCESSFULLY_ACTIVATED_TEMPLATE.format(money_got),
                              reply_markup=menu_markups.menu_markup)
         await state.finish()
     elif error_code == 2:
@@ -171,7 +172,76 @@ async def show_shop_temp_message(message: types.Message, state: FSMContext):
     await message.answer(menu_texts.STORE_TEMP_TEXT)
 
 
+# Рассылка
+async def lettering_respond(message: Message, state: FSMContext):
+    if message.from_user.id != constants.LETTERING_ADMIN_ID:
+        return
+    markup = ReplyKeyboardMarkup()
+    markup.add(menu_markups.CANCEL_BUTTON)
+    await message.answer("Пожалуйста, введите текст рассылки.",
+                         reply_markup=markup)
+    await LetteringState.get_text.set()
+
+
+async def lettering_get(message: types.Message, state: FSMContext):
+    if message.from_user.id != constants.LETTERING_ADMIN_ID:
+        return
+
+    text = message.text
+    markup = ReplyKeyboardMarkup()
+    markup.add("Подтвердить")
+    markup.add(menu_markups.CANCEL_BUTTON)
+    await message.answer("Так будет выглядеть текст рассылки:\n\n" +
+                         text,
+                         reply_markup=markup,
+                         parse_mode=ParseMode.HTML)
+
+    await state.update_data(lettering_text=text)
+    await LetteringState.lettering_confirmation.set()
+
+
+async def lettering_start_lettering(message, state: FSMContext):
+    if message.from_user.id != constants.LETTERING_ADMIN_ID:
+        return
+    data = await state.get_data()
+    text = data["lettering_text"]
+
+    users_data = db.execute("SELECT tg_id FROM users", fetch=True)
+    await message.answer(f"Рассылка начата для {len(users_data)} пользователей. "
+                         f"Она займёт {constants.LETTERING_PERIOD * len(users_data)} секунд.",
+                         reply_markup=menu_markups.menu_markup)
+    users_delivered = 0
+    for telegram_id, in users_data:
+        await asyncio.sleep(constants.LETTERING_PERIOD)
+        try:
+            await bot.send_message(chat_id=telegram_id, text=text, parse_mode=ParseMode.HTML)
+        except Exception as e:
+            print(e)
+        else:
+            users_delivered += 1
+    await asyncio.sleep(constants.LETTERING_PERIOD)
+    await message.answer(f"Рассылка отправлена {users_delivered} пользователям. ",
+                         reply_markup=menu_markups.menu_markup)
+    await state.finish()
+
+
 def register_menu_handlers():
+    # Рассылка
+    dp.register_message_handler(lettering_respond,
+                                text="Рассылка",
+                                state=None)
+    dp.register_message_handler(send_menu_on_update,
+                                state=menu_fsm.LetteringState.get_text,
+                                text=menu_texts.CANCEL_TEXT)
+    dp.register_message_handler(lettering_get,
+                                state=menu_fsm.LetteringState.get_text)
+    dp.register_message_handler(lettering_start_lettering,
+                                state=menu_fsm.LetteringState.lettering_confirmation,
+                                text="Подтвердить")
+    dp.register_message_handler(send_menu_on_update,
+                                state=menu_fsm.LetteringState.lettering_confirmation,
+                                text=menu_texts.CANCEL_TEXT)
+
     dp.register_message_handler(send_menu_on_update,
                                 F.from_user.func(lambda user: db.user_registered(user.id)),
                                 state="*",
