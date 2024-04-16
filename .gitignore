@@ -2,3 +2,4 @@
 /database/mmweek2023db.db
 .idea
 venv
+*/__pycache__
