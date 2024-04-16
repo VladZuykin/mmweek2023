@@ -2,10 +2,11 @@ from typing import Union
 
 from aiogram.dispatcher import FSMContext
 from aiogram.types import ParseMode, ReplyKeyboardRemove, Message, CallbackQuery, ChatActions, ReplyKeyboardMarkup, \
-    InlineKeyboardMarkup, InlineKeyboardButton
+    InlineKeyboardMarkup, InlineKeyboardButton, KeyboardButton
 from callbacks.org_merch_issuance_callbacks import MERCH_ISSUANCE_CB, MERCH_RETURN_BACK_CONFIRM_CB, CANCEL_TEXT_CB
 from fsm.org_merch_issuance_fsm import MerchIssuanceState
-from markups import org_merch_issuance_markups
+from handlers import org_menu_handlers
+from markups import org_merch_issuance_markups, menu_markups
 from org_bot_create import bot, dp, config, db
 from callbacks import org_merch_issuance_callbacks
 from middleware import admins
@@ -21,7 +22,8 @@ async def merch_issuance_code_input(update: Union[Message, CallbackQuery], state
         message = update
     else:
         message = update.message
-    await message.answer(org_merch_issuance_texts.CODE_INPUT_TEXT)
+    await message.answer(org_merch_issuance_texts.CODE_INPUT_TEXT,
+                         reply_markup=ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton("Отмена")))
     await MerchIssuanceState.code_input.set()
 
 
@@ -166,8 +168,8 @@ async def merch_issuance_number_confirm(callback: CallbackQuery, state: FSMConte
                                                                                                       callback_data=CANCEL_TEXT_CB)))
         await MerchIssuanceState.issuance_bad.set()
         return
-    # code = db.issue_merch(purchases_id, merch_to_issue, callback.from_user.id)
-    code = 0
+    code = db.issue_merch(purchases_id, merch_to_issue, callback.from_user.id)
+    # code = 0
     if code == 0:
         await callback.message.edit_text(org_merch_issuance_texts.MERCH_GIVEN_TEMPLATE.format(user_fullname,
                                                                                               merch_to_issue,
@@ -292,8 +294,9 @@ async def merch_return_back_number_process(callback: CallbackQuery, state: FSMCo
         merch_fullname,
         merch_to_return_back * price
     ), parse_mode=ParseMode.HTML)
-    # db.return_back_merch(purchases_id, merch_to_return_back, callback.from_user.id)
+    db.return_back_merch(purchases_id, merch_to_return_back, callback.from_user.id)
     await merch_issuance_choice(callback, state, edit=False)
+
 
 @admins.check(2)
 async def merch_issuance_choice_return(callback: CallbackQuery, state: FSMContext):
@@ -305,6 +308,9 @@ async def merch_issuance_choice_return(callback: CallbackQuery, state: FSMContex
 
 
 def register_merch_issuance_handlers():
+    dp.register_message_handler(org_menu_handlers.send_menu_on_update,
+                                text="Отмена",
+                                state="*")
     dp.register_message_handler(merch_issuance_code_input,
                                 text=org_menu_texts.MENU_MERCH_BUTTON_TEXT,
                                 state="*")

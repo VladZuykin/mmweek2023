@@ -81,11 +81,14 @@ class DataBase:
                             stuff_id              INTEGER REFERENCES stuff (id),
                             stuff_sizes_colors_id INTEGER REFERENCES stuff_sizes_colors (id),
                             count                 INTEGER NOT NULL,
+                            issued                INTEGER DEFAULT (0) 
+                                  NOT NULL,
                             UNIQUE (
                                 tg_id,
                                 stuff_id,
                                 stuff_sizes_colors_id
                             )
+                            
                         );
 """,
                      commit=True)

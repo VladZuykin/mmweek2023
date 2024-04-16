@@ -98,17 +98,24 @@ class OrgDataBase(DataBase):
 
     def issue_merch(self, purchase_id, k,
                     checker_tg_id):  # 0 - успех,  1 - нет такой записи, 2 - k < 0, 3 - k > count - issued, 4 - error
-        any_records = self.execute("SELECT count, issued, tg_id FROM purchases WHERE id = ?", purchase_id, fetch="ONE")
+        any_records = self.execute("SELECT purchases.count, purchases.issued, purchases.tg_id, "
+                                   "stuff.tuc_price, stuff.not_tuc_price, users.tuc, "
+                                   "purchases.stuff_sizes_colors_id, purchases.stuff_id "
+                                   "FROM purchases "
+                                   "JOIN stuff ON purchases.stuff_id = stuff.id "
+                                   "JOIN users ON purchases.tg_id = users.tg_id "
+                                   "WHERE purchases.id = ?",
+                                   purchase_id, fetch="ONE")
         if not any_records:
             return 1
-        count, issued, tg_id = any_records
+        count, issued, tg_id, tuc_price, not_tuc_price, tuc_status, sizes_colors_id, stuff_id = any_records
         if k < 0:
             self.add_transaction(constants.TransactionTypes.ISSUE_MERCH_FAIL.value, checker_tg_id, tg_id,
-                                 f"less than zero")
+                                 f"less than zero stuff_id: {stuff_id}, sizes_colors_id: {sizes_colors_id}")
             return 2
         if k > count - issued:
             self.add_transaction(constants.TransactionTypes.ISSUE_MERCH_FAIL.value, checker_tg_id, tg_id,
-                                 f"too many to issue")
+                                 f"too many to issue stuff_id: {stuff_id}, sizes_colors_id: {sizes_colors_id}")
             return 3
         fail = False
         cur = self.con.cursor()
@@ -122,11 +129,12 @@ class OrgDataBase(DataBase):
         cur.close()
         if fail:
             self.add_transaction(constants.TransactionTypes.ISSUE_MERCH_FAIL.value, checker_tg_id, tg_id,
-                                 f"updating error")
+                                 f"updating error stuff_id: {stuff_id}, sizes_colors_id: {sizes_colors_id}")
             return 4
         else:
+
             self.add_transaction(constants.TransactionTypes.ISSUE_MERCH.value, checker_tg_id, tg_id,
-                                 None)
+                                 f"stuff_id: {stuff_id}, sizes_colors_id: {sizes_colors_id} returned: {k}")
             return 0
 
     def return_back_merch(self, purchase_id, k, checker_tg_id):
@@ -143,11 +151,11 @@ class OrgDataBase(DataBase):
         count, issued, tg_id, tuc_price, not_tuc_price, tuc_status, sizes_colors_id, stuff_id = any_records
         if k < 0:
             self.add_transaction(constants.TransactionTypes.MERCH_RETURN_BACK_FAIL.value, checker_tg_id, tg_id,
-                                 f"less than zero")
+                                 f"less than zero stuff_id: {stuff_id}, sizes_colors_id: {sizes_colors_id}")
             return 2
         if k > count:
             self.add_transaction(constants.TransactionTypes.MERCH_RETURN_BACK_FAIL.value, checker_tg_id, tg_id,
-                                 f"too many to return back")
+                                 f"too many to return back stuff_id: {stuff_id}, sizes_colors_id: {sizes_colors_id}")
             return 3
         will_be_issued = min(issued, count - k)
         if tuc_status:
@@ -159,8 +167,11 @@ class OrgDataBase(DataBase):
         fail = False
         cur = self.con.cursor()
         try:
-            cur.execute("UPDATE purchases SET count = count - ?, issued = ? WHERE id = ?", (k, will_be_issued,
-                                                                                            purchase_id))
+            if count != k:
+                cur.execute("UPDATE purchases SET count = count - ?, issued = ? WHERE id = ?", (k, will_be_issued,
+                                                                                                purchase_id))
+            else:
+                cur.execute("DELETE FROM purchases WHERE id = ? ", (purchase_id,))
             cur.execute("UPDATE users SET money = money + ? WHERE tg_id = ?", (money_get, tg_id))
             if sizes_colors_id:
                 cur.execute("UPDATE stuff_sizes_colors SET count = count + 1 WHERE id = ?", (sizes_colors_id,))
@@ -174,11 +185,11 @@ class OrgDataBase(DataBase):
         cur.close()
         if fail:
             self.add_transaction(constants.TransactionTypes.MERCH_RETURN_BACK_FAIL.value, checker_tg_id, tg_id,
-                                 f"updating error")
+                                 f"updating error stuff_id: {stuff_id}, sizes_colors_id: {sizes_colors_id}")
             return 4
         else:
             self.add_transaction(constants.TransactionTypes.MERCH_RETURN_BACK.value, checker_tg_id, tg_id,
-                                 None)
+                                 f"stuff_id: {stuff_id}, sizes_colors_id: {sizes_colors_id} were given: {k}")
             return 0
 
 

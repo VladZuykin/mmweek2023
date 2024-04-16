@@ -3,7 +3,8 @@ from aiogram import executor
 import startup_functions
 from middleware import antispam, blacklist, admins
 
-from bot_create import bot, dp, db
+from create_db import db
+from bot_create import bot, dp
 from handlers import registration_handlers, menu_handlers, store_handlers
 
 if __name__ == '__main__':
